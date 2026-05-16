@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#0f1115"/>
+  <g transform="translate(96 128)" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 224 L80 144 L160 192 L240 80 L320 128"/>
+    <circle cx="0" cy="224" r="14" fill="#ffffff"/>
+    <circle cx="80" cy="144" r="14" fill="#ffffff"/>
+    <circle cx="160" cy="192" r="14" fill="#ffffff"/>
+    <circle cx="240" cy="80" r="14" fill="#ffffff"/>
+    <circle cx="320" cy="128" r="14" fill="#ffffff"/>
+  </g>
+  <text x="256" y="420" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif"
+        font-weight="700" font-size="64" fill="#ffffff">£</text>
+</svg>

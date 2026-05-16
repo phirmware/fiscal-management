@@ -51,9 +51,11 @@ export function normaliseAppState(input: unknown): AppState {
       income: budget.income ?? [],
     },
     overspendAcks: src.overspendAcks ?? [],
+    releaseAcks: src.releaseAcks ?? [],
     ui: {
       selectedMonth: src.ui?.selectedMonth ?? base.ui.selectedMonth,
       lastUsedCategoryId: src.ui?.lastUsedCategoryId ?? null,
+      hasOnboarded: src.ui?.hasOnboarded ?? false,
     },
   };
 }

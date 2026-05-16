@@ -5,15 +5,22 @@ export interface OverspendAck {
   month: Month;
 }
 
+export interface ReleaseAck {
+  categoryId: string;
+  month: Month;
+}
+
 export interface UiState {
   selectedMonth: Month;
   lastUsedCategoryId: string | null;
+  hasOnboarded: boolean;
 }
 
 export interface AppState {
   version: number;
   budget: BudgetState;
   overspendAcks: OverspendAck[];
+  releaseAcks: ReleaseAck[];
   ui: UiState;
 }
 
@@ -37,14 +44,20 @@ export function emptyAppState(now: Date = new Date()): AppState {
       income: [],
     },
     overspendAcks: [],
+    releaseAcks: [],
     ui: {
       selectedMonth: currentMonth(now),
       lastUsedCategoryId: null,
+      hasOnboarded: false,
     },
   };
 }
 
-export function isAcked(acks: OverspendAck[], categoryId: string, month: Month): boolean {
+export function isAcked(
+  acks: { categoryId: string; month: Month }[],
+  categoryId: string,
+  month: Month,
+): boolean {
   for (const a of acks) {
     if (a.categoryId === categoryId && a.month === month) return true;
   }

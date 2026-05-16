@@ -117,6 +117,52 @@ describe("app store", () => {
     expect(useAppStore.getState().budget.savingsEntries).toHaveLength(0);
   });
 
+  it("sendReleaseToCategory adds to recipient budget and acknowledges the release", () => {
+    const fun = useAppStore.getState().addCategory({
+      name: "Fun",
+      group: "Wants",
+      type: "Limit",
+      fromMonth: M,
+    });
+    const eatout = useAppStore.getState().addCategory({
+      name: "Eatout",
+      group: "Wants",
+      type: "Pot",
+      fromMonth: "2026-04",
+    });
+    useAppStore.getState().setBudget(fun, M, 100);
+    useAppStore.getState().setBudget(eatout, "2026-04", 100);
+    useAppStore.getState().convertCategoryType(eatout, M, "Limit");
+
+    useAppStore.getState().sendReleaseToCategory(eatout, fun, M, 100);
+    const budgets = useAppStore
+      .getState()
+      .budget.budgets.filter((b) => b.categoryId === fun && b.month === M);
+    expect(budgets[0]!.amount).toBe(200);
+    expect(useAppStore.getState().releaseAcks).toEqual([{ categoryId: eatout, month: M }]);
+  });
+
+  it("acknowledgeRelease records the ack without changing engine output", () => {
+    const fun = useAppStore.getState().addCategory({
+      name: "Fun",
+      group: "Wants",
+      type: "Limit",
+      fromMonth: M,
+    });
+    useAppStore.getState().setBudget(fun, M, 100);
+    const before = computeMonth(useAppStore.getState().budget, M);
+    useAppStore.getState().acknowledgeRelease(fun, M);
+    const after = computeMonth(useAppStore.getState().budget, M);
+    expect(after).toEqual(before);
+    expect(useAppStore.getState().releaseAcks).toEqual([{ categoryId: fun, month: M }]);
+  });
+
+  it("completeOnboarding sets ui.hasOnboarded true", () => {
+    expect(useAppStore.getState().ui.hasOnboarded).toBe(false);
+    useAppStore.getState().completeOnboarding();
+    expect(useAppStore.getState().ui.hasOnboarded).toBe(true);
+  });
+
   it("exportJson → importJson reproduces engine output across full state", () => {
     seed();
     const s = useAppStore.getState();

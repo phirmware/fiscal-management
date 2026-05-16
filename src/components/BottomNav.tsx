@@ -5,6 +5,7 @@ const ITEMS: { id: Screen; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "●" },
   { id: "budget", label: "Budget", icon: "◧" },
   { id: "transactions", label: "Activity", icon: "↕" },
+  { id: "insights", label: "Insights", icon: "▲" },
   { id: "settings", label: "Settings", icon: "✱" },
 ];
 
@@ -17,7 +18,7 @@ export function BottomNav() {
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone bg-surface-card/95
         backdrop-blur border-t border-surface-border pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {ITEMS.map((item) => {
           const active = item.id === screen;
           return (

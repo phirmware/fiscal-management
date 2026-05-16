@@ -2,11 +2,14 @@ import { useMemo, useState } from "react";
 import { computeMonth } from "../engine.js";
 import { categoryRows, unresolvedOverspends } from "../app/derived.js";
 import type { CategoryRow as CategoryRowData, OverspendRow } from "../app/derived.js";
+import { unresolvedReleases } from "../app/insights.js";
+import type { ReleaseEntry } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { formatGBP } from "../app/utils/money.js";
 import { CategoryRow } from "../components/CategoryRow.js";
 import { OverspendPrompt } from "../components/OverspendPrompt.js";
 import { ReallocationDialog } from "../components/ReallocationDialog.js";
+import { ReleaseDialog } from "../components/ReleaseDialog.js";
 import { Modal } from "../components/Modal.js";
 import type { CategoryType, Group } from "../types.js";
 import { parseMoneyInput } from "../app/utils/money.js";
@@ -19,6 +22,7 @@ export function BudgetScreen() {
   const addCategory = useAppStore((s) => s.addCategory);
 
   const setBudget = useAppStore((s) => s.setBudget);
+  const releaseAcks = useAppStore((s) => s.releaseAcks);
 
   const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
   const rows = useMemo(
@@ -26,8 +30,13 @@ export function BudgetScreen() {
     [budget, monthSummary, acks, month],
   );
   const unresolved = unresolvedOverspends(rows);
+  const releases = useMemo(
+    () => unresolvedReleases(budget, month, releaseAcks),
+    [budget, month, releaseAcks],
+  );
 
   const [overspendFor, setOverspendFor] = useState<OverspendRow | null>(null);
+  const [releaseFor, setReleaseFor] = useState<ReleaseEntry | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   function rowToOverspend(row: CategoryRowData): OverspendRow {
@@ -65,15 +74,43 @@ export function BudgetScreen() {
             <div className="font-semibold tabular-nums">{formatGBP(monthSummary.unallocated)}</div>
           </div>
         </div>
-        {monthSummary.releasedFromConversions !== 0 && (
-          <p className="mt-2 text-xs text-ink-soft">
-            Released from Pot→Limit conversions this month:{" "}
-            <span className="font-semibold">
-              {formatGBP(monthSummary.releasedFromConversions)}
-            </span>
-          </p>
-        )}
       </section>
+
+      {releases.length > 0 && (
+        <section className="rounded-2xl border border-status-info/30 bg-status-infoSoft/60 p-4">
+          <h2 className="text-sm font-semibold text-ink">
+            {releases.length === 1
+              ? `${releases[0]!.categoryName}: ${formatGBP(Math.abs(releases[0]!.amount))} released from Pot→Limit conversion.`
+              : `${releases.length} categories converted from Pot to Limit — released amounts need a home.`}
+          </h2>
+          <p className="text-xs text-ink-soft mt-1">
+            The accumulated Pot balance from last month is no longer earmarked. Assign it to
+            another category for this month, or leave it in unallocated.
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {releases.map((r) => (
+              <li key={r.categoryId} className="flex items-center justify-between gap-2">
+                <div className="text-sm">
+                  <span className="font-medium text-ink">{r.categoryName}</span>
+                  <span
+                    className={`ml-2 font-semibold ${r.amount < 0 ? "text-status-over" : "text-status-info"}`}
+                  >
+                    {r.amount < 0 ? "−" : "+"}
+                    {formatGBP(Math.abs(r.amount))}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReleaseFor(r)}
+                  className="btn-secondary text-xs px-3 py-1.5"
+                >
+                  Handle
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
@@ -105,6 +142,7 @@ export function BudgetScreen() {
       )}
 
       <ReallocationDialog row={overspendFor} month={month} onClose={() => setOverspendFor(null)} />
+      <ReleaseDialog entry={releaseFor} onClose={() => setReleaseFor(null)} />
 
       <AddCategoryModal
         open={addOpen}

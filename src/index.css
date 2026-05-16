@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  /* Hide app chrome; show only the statement card. */
+  nav,
+  header,
+  .print\:hidden {
+    display: none !important;
+  }
+  body,
+  main {
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+  .card.statement {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  table {
+    page-break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
 html,
 body,
 #root {

@@ -14,7 +14,7 @@ import type {
   Transaction,
   TypeSegment,
 } from "../types.js";
-import type { AppState, OverspendAck } from "./state.js";
+import type { AppState, OverspendAck, ReleaseAck } from "./state.js";
 import {
   exportAppStateJson,
   importAppStateJson,
@@ -23,7 +23,7 @@ import {
   saveAppState,
 } from "./storage.js";
 
-export type Screen = "home" | "budget" | "transactions" | "settings";
+export type Screen = "home" | "budget" | "transactions" | "insights" | "settings";
 
 interface AppStore extends AppState {
   selectedScreen: Screen;
@@ -70,6 +70,16 @@ interface AppStore extends AppState {
   coverFromUnallocated: (categoryId: string, month: Month, amount: number) => void;
   acknowledgeOverspend: (categoryId: string, month: Month) => void;
   unacknowledgeOverspend: (categoryId: string, month: Month) => void;
+
+  sendReleaseToCategory: (
+    convertedCategoryId: string,
+    recipientId: string,
+    month: Month,
+    amount: number,
+  ) => void;
+  acknowledgeRelease: (categoryId: string, month: Month) => void;
+
+  completeOnboarding: () => void;
 
   exportJson: () => string;
   importJson: (json: string) => void;
@@ -324,12 +334,37 @@ export const useAppStore = create<AppStore>()(
         ),
       })),
 
+    sendReleaseToCategory: (convertedCategoryId, recipientId, month, amount) => {
+      if (amount === 0) return;
+      set((s) => ({
+        budget: { ...s.budget, budgets: changeBudget(s.budget.budgets, recipientId, month, amount) },
+        releaseAcks: s.releaseAcks.some(
+          (a) => a.categoryId === convertedCategoryId && a.month === month,
+        )
+          ? s.releaseAcks
+          : [...s.releaseAcks, { categoryId: convertedCategoryId, month }],
+      }));
+    },
+
+    acknowledgeRelease: (categoryId, month) =>
+      set((s) => {
+        const exists = s.releaseAcks.some(
+          (a) => a.categoryId === categoryId && a.month === month,
+        );
+        if (exists) return {};
+        const ack: ReleaseAck = { categoryId, month };
+        return { releaseAcks: [...s.releaseAcks, ack] };
+      }),
+
+    completeOnboarding: () => set((s) => ({ ui: { ...s.ui, hasOnboarded: true } })),
+
     exportJson: () => {
       const s = get();
       const snapshot: AppState = {
         version: s.version,
         budget: s.budget,
         overspendAcks: s.overspendAcks,
+        releaseAcks: s.releaseAcks,
         ui: s.ui,
       };
       return exportAppStateJson(snapshot);
@@ -341,6 +376,7 @@ export const useAppStore = create<AppStore>()(
         version: next.version,
         budget: next.budget,
         overspendAcks: next.overspendAcks,
+        releaseAcks: next.releaseAcks,
         ui: next.ui,
       });
     },
@@ -352,6 +388,7 @@ export const useAppStore = create<AppStore>()(
         version: fresh.version,
         budget: fresh.budget,
         overspendAcks: fresh.overspendAcks,
+        releaseAcks: fresh.releaseAcks,
         ui: fresh.ui,
         selectedScreen: "home",
       });
@@ -364,6 +401,7 @@ useAppStore.subscribe(
     version: s.version,
     budget: s.budget,
     overspendAcks: s.overspendAcks,
+    releaseAcks: s.releaseAcks,
     ui: s.ui,
   }),
   (slice) => {
@@ -371,6 +409,9 @@ useAppStore.subscribe(
   },
   {
     equalityFn: (a, b) =>
-      a.budget === b.budget && a.overspendAcks === b.overspendAcks && a.ui === b.ui,
+      a.budget === b.budget &&
+      a.overspendAcks === b.overspendAcks &&
+      a.releaseAcks === b.releaseAcks &&
+      a.ui === b.ui,
   },
 );
