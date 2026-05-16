@@ -25,18 +25,32 @@ function GroupComparisonRow({
   benchmark: number;
   colour: string;
 }) {
-  const ratio = benchmark <= 0 ? 0 : Math.min(2, actual / benchmark);
-  const widthPct = Math.min(100, (ratio / 2) * 100);
+  const ratio = benchmark <= 0 ? 0 : actual / benchmark;
+  const fillPct = Math.min(100, Math.max(0, ratio * 100));
+  const overshootPct = Math.max(0, ratio - 1) * 100;
+  const overshootDisplay = Math.min(100, overshootPct);
   return (
     <div>
       <div className="flex justify-between text-xs text-ink-soft">
         <span className="font-medium">{label}</span>
         <span className="tabular-nums">
           {formatGBP(actual)} <span className="text-ink-muted">vs {formatGBP(benchmark)}</span>
+          {overshootPct > 0 && (
+            <span className="ml-1.5 text-status-warn font-medium">
+              +{Math.round(overshootPct)}%
+            </span>
+          )}
         </span>
       </div>
-      <div className="mt-1 h-2 rounded-full bg-surface-sunken overflow-hidden">
-        <div className={`h-full ${colour}`} style={{ width: `${widthPct}%` }} />
+      <div className="mt-1 h-2 rounded-full bg-surface-sunken overflow-hidden flex">
+        <div className={`h-full ${colour}`} style={{ width: `${fillPct}%` }} />
+        {overshootDisplay > 0 && (
+          <div
+            className="h-full bg-status-warn/80"
+            style={{ width: `${overshootDisplay * 0.5}%` }}
+            title={`${Math.round(overshootPct)}% over benchmark`}
+          />
+        )}
       </div>
     </div>
   );

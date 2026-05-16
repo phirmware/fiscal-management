@@ -11,28 +11,52 @@ const STROKE = "stroke-current fill-none";
 
 const HomeIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z" />
+    <path
+      className={STROKE}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z"
+    />
   </svg>
 );
 
 const BudgetIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
-    <circle cx="6" cy="6" r="1.2" className="fill-current" />
-    <circle cx="6" cy="12" r="1.2" className="fill-current" />
-    <circle cx="6" cy="18" r="1.2" className="fill-current" />
+    <path
+      className={STROKE}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4 6h16M4 12h16M4 18h10"
+    />
+    <circle cx="6" cy="6" r="1.4" className="fill-current" />
+    <circle cx="6" cy="12" r="1.4" className="fill-current" />
+    <circle cx="6" cy="18" r="1.4" className="fill-current" />
   </svg>
 );
 
 const ActivityIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M3 12h3l3-7 4 14 3-7h5" />
+    <path
+      className={STROKE}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M3 12h3l3-7 4 14 3-7h5"
+    />
   </svg>
 );
 
 const InsightsIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+    <path
+      className={STROKE}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4 20V10M10 20V4M16 20v-7M22 20H2"
+    />
   </svg>
 );
 
@@ -63,25 +87,36 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone bg-surface-card/90
-        backdrop-blur border-t border-surface-border pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone
+        bg-surface-card/95 backdrop-blur-md border-t border-surface-border
+        pb-[env(safe-area-inset-bottom)] print:hidden"
       aria-label="Primary"
     >
-      <ul className="grid grid-cols-5">
+      <ul className="grid grid-cols-5 px-2 pt-2">
         {ITEMS.map((item) => {
           const active = item.id === screen;
           return (
-            <li key={item.id}>
+            <li key={item.id} className="flex">
               <button
                 type="button"
                 onClick={() => setSelectedScreen(item.id)}
-                className={`tap w-full flex flex-col items-center justify-center py-2 gap-0.5
-                  ${active ? "text-ink font-semibold" : "text-ink-muted hover:text-ink-soft"}`}
+                className="tap w-full flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl
+                  transition-colors text-ink-muted hover:text-ink-soft"
                 aria-current={active ? "page" : undefined}
                 aria-label={item.label}
               >
-                <item.Icon className={`w-5 h-5 ${active ? "" : "opacity-80"}`} />
-                <span className="text-[11px] leading-tight">{item.label}</span>
+                <span
+                  className={`flex items-center justify-center rounded-full transition-all
+                    ${active ? "bg-ink text-surface px-4 py-1" : "px-2 py-1"}`}
+                >
+                  <item.Icon className="w-[22px] h-[22px]" />
+                </span>
+                <span
+                  className={`text-[11px] leading-tight transition-colors
+                    ${active ? "text-ink font-semibold" : ""}`}
+                >
+                  {item.label}
+                </span>
               </button>
             </li>
           );
