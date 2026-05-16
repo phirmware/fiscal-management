@@ -1,12 +1,60 @@
 import type { Screen } from "../app/store.js";
 import { useAppStore } from "../app/store.js";
 
-const ITEMS: { id: Screen; label: string; icon: string }[] = [
-  { id: "home", label: "Home", icon: "●" },
-  { id: "budget", label: "Budget", icon: "◧" },
-  { id: "transactions", label: "Activity", icon: "↕" },
-  { id: "insights", label: "Insights", icon: "▲" },
-  { id: "settings", label: "Settings", icon: "✱" },
+interface NavItem {
+  id: Screen;
+  label: string;
+  Icon: (props: { className?: string }) => JSX.Element;
+}
+
+const STROKE = "stroke-current fill-none";
+
+const HomeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1Z" />
+  </svg>
+);
+
+const BudgetIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h10" />
+    <circle cx="6" cy="6" r="1.2" className="fill-current" />
+    <circle cx="6" cy="12" r="1.2" className="fill-current" />
+    <circle cx="6" cy="18" r="1.2" className="fill-current" />
+  </svg>
+);
+
+const ActivityIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M3 12h3l3-7 4 14 3-7h5" />
+  </svg>
+);
+
+const InsightsIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <path className={STROKE} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+  </svg>
+);
+
+const SettingsIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <circle cx="12" cy="12" r="3" className={STROKE} strokeWidth={1.8} />
+    <path
+      className={STROKE}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M19.4 15a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.6 1.6 0 0 0-1.7-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.6 1.6 0 0 0 .3-1.7 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.6 1.6 0 0 0 1.7.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.6 1.6 0 0 0-.3 1.7v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"
+    />
+  </svg>
+);
+
+const ITEMS: NavItem[] = [
+  { id: "home", label: "Home", Icon: HomeIcon },
+  { id: "budget", label: "Budget", Icon: BudgetIcon },
+  { id: "transactions", label: "Activity", Icon: ActivityIcon },
+  { id: "insights", label: "Insights", Icon: InsightsIcon },
+  { id: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export function BottomNav() {
@@ -15,8 +63,9 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone bg-surface-card/95
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone bg-surface-card/90
         backdrop-blur border-t border-surface-border pb-[env(safe-area-inset-bottom)]"
+      aria-label="Primary"
     >
       <ul className="grid grid-cols-5">
         {ITEMS.map((item) => {
@@ -26,12 +75,13 @@ export function BottomNav() {
               <button
                 type="button"
                 onClick={() => setSelectedScreen(item.id)}
-                className={`tap w-full flex flex-col items-center justify-center py-2.5 gap-0.5
-                  text-xs ${active ? "text-ink font-semibold" : "text-ink-muted"}`}
+                className={`tap w-full flex flex-col items-center justify-center py-2 gap-0.5
+                  ${active ? "text-ink font-semibold" : "text-ink-muted hover:text-ink-soft"}`}
                 aria-current={active ? "page" : undefined}
+                aria-label={item.label}
               >
-                <span className={`text-lg ${active ? "" : "opacity-70"}`}>{item.icon}</span>
-                <span>{item.label}</span>
+                <item.Icon className={`w-5 h-5 ${active ? "" : "opacity-80"}`} />
+                <span className="text-[11px] leading-tight">{item.label}</span>
               </button>
             </li>
           );

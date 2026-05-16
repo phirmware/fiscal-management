@@ -23,7 +23,7 @@ export function InsightsScreen() {
             type="button"
             onClick={() => setTab(t.id)}
             className={`tap text-sm font-semibold rounded-xl py-2 ${
-              tab === t.id ? "bg-ink text-white" : "text-ink-muted"
+              tab === t.id ? "bg-ink text-surface" : "text-ink-muted"
             }`}
             aria-current={tab === t.id ? "page" : undefined}
           >

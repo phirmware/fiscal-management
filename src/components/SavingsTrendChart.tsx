@@ -12,6 +12,10 @@ const PAD_X = 28;
 const PAD_TOP = 16;
 const PAD_BOTTOM = 36;
 
+const LINE_COLOR = "rgb(var(--c-group-savings))";
+const POS_BAR_COLOR = "rgb(var(--c-group-savings))";
+const NEG_BAR_COLOR = "rgb(var(--c-status-over))";
+
 export function SavingsTrendChart({ points }: Props) {
   if (points.length === 0) {
     return <p className="text-xs text-ink-muted">No months in range.</p>;
@@ -42,18 +46,25 @@ export function SavingsTrendChart({ points }: Props) {
       role="img"
       aria-label="Savings trend chart"
     >
-      <path d={areaD} fill="#05966915" />
-      <path d={pathD} stroke="#059669" strokeWidth={2} fill="none" />
+      <path d={areaD} style={{ fill: LINE_COLOR }} opacity={0.08} />
+      <path d={pathD} style={{ stroke: LINE_COLOR }} strokeWidth={2} fill="none" />
 
       {points.map((p, i) => {
         const x = xFor(i);
         const h = (Math.abs(p.monthTotal) / maxMonth) * (innerH * 0.4);
         const y = p.monthTotal >= 0 ? PAD_TOP + innerH - h : PAD_TOP + innerH;
-        const colour = p.monthTotal >= 0 ? "#05966960" : "#dc262660";
+        const colour = p.monthTotal >= 0 ? POS_BAR_COLOR : NEG_BAR_COLOR;
         return (
           <g key={p.month}>
-            <rect x={x - barWidth / 2} y={y} width={barWidth} height={Math.max(1, h)} fill={colour} />
-            <circle cx={x} cy={yFor(p.cumulativeTotal)} r={3} fill="#059669" />
+            <rect
+              x={x - barWidth / 2}
+              y={y}
+              width={barWidth}
+              height={Math.max(1, h)}
+              style={{ fill: colour }}
+              opacity={0.4}
+            />
+            <circle cx={x} cy={yFor(p.cumulativeTotal)} r={3} style={{ fill: LINE_COLOR }} />
             {i % showEvery === 0 && (
               <text
                 x={x}

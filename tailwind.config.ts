@@ -1,36 +1,39 @@
 import type { Config } from "tailwindcss";
 
+const withVar = (name: string) => `rgb(var(${name}) / <alpha-value>)`;
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
+  darkMode: ["selector", "[data-theme='dark']"],
   theme: {
     extend: {
       colors: {
         ink: {
-          DEFAULT: "#0f1115",
-          soft: "#3a3f48",
-          muted: "#6a7079",
-          faint: "#9ca3ad",
+          DEFAULT: withVar("--c-ink"),
+          soft: withVar("--c-ink-soft"),
+          muted: withVar("--c-ink-muted"),
+          faint: withVar("--c-ink-faint"),
         },
         surface: {
-          DEFAULT: "#fafafa",
-          card: "#ffffff",
-          sunken: "#f0f1f3",
-          border: "#e4e6ea",
+          DEFAULT: withVar("--c-surface"),
+          card: withVar("--c-surface-card"),
+          sunken: withVar("--c-surface-sunken"),
+          border: withVar("--c-surface-border"),
         },
         status: {
-          ok: "#16a34a",
-          okSoft: "#dcfce7",
-          warn: "#d97706",
-          warnSoft: "#fef3c7",
-          over: "#dc2626",
-          overSoft: "#fee2e2",
-          info: "#2563eb",
-          infoSoft: "#dbeafe",
+          ok: withVar("--c-status-ok"),
+          okSoft: withVar("--c-status-ok-soft"),
+          warn: withVar("--c-status-warn"),
+          warnSoft: withVar("--c-status-warn-soft"),
+          over: withVar("--c-status-over"),
+          overSoft: withVar("--c-status-over-soft"),
+          info: withVar("--c-status-info"),
+          infoSoft: withVar("--c-status-info-soft"),
         },
         group: {
-          needs: "#0284c7",
-          wants: "#9333ea",
-          savings: "#059669",
+          needs: withVar("--c-group-needs"),
+          wants: withVar("--c-group-wants"),
+          savings: withVar("--c-group-savings"),
         },
       },
       fontFamily: {

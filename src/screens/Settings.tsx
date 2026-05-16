@@ -5,6 +5,7 @@ import { Modal } from "../components/Modal.js";
 import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
 import type { CategoryType } from "../types.js";
+import type { ThemePreference } from "../app/state.js";
 
 export function SettingsScreen() {
   const budget = useAppStore((s) => s.budget);
@@ -17,6 +18,8 @@ export function SettingsScreen() {
   const exportJson = useAppStore((s) => s.exportJson);
   const importJson = useAppStore((s) => s.importJson);
   const resetAll = useAppStore((s) => s.resetAll);
+  const themePref = useAppStore((s) => s.ui.theme);
+  const setTheme = useAppStore((s) => s.setTheme);
 
   const [importOpen, setImportOpen] = useState(false);
   const [importText, setImportText] = useState("");
@@ -79,6 +82,27 @@ export function SettingsScreen() {
   return (
     <div className="flex flex-col gap-4">
       <section className="card p-4">
+        <h2 className="text-sm font-semibold text-ink-soft">Appearance</h2>
+        <p className="text-xs text-ink-muted mt-1">Theme preference for this device.</p>
+        <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
+          {(["light", "dark", "system"] as ThemePreference[]).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              role="radio"
+              aria-checked={themePref === opt}
+              onClick={() => setTheme(opt)}
+              className={`btn px-0 py-2 text-sm ${
+                themePref === opt ? "bg-ink text-surface" : "bg-surface-sunken text-ink-soft"
+              }`}
+            >
+              {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card p-4">
         <h2 className="text-sm font-semibold text-ink-soft">Categories</h2>
         {budget.categories.length === 0 ? (
           <p className="text-xs text-ink-muted mt-2">No categories yet.</p>
@@ -105,7 +129,7 @@ export function SettingsScreen() {
                         type="button"
                         className={`btn text-xs px-0 py-1.5 ${
                           c.group === g
-                            ? "bg-ink text-white"
+                            ? "bg-ink text-surface"
                             : "bg-surface-sunken text-ink-soft"
                         }`}
                         onClick={() => setCategoryGroup(c.id, g)}

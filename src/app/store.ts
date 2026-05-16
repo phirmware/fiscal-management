@@ -14,7 +14,7 @@ import type {
   Transaction,
   TypeSegment,
 } from "../types.js";
-import type { AppState, OverspendAck, ReleaseAck } from "./state.js";
+import type { AppState, OverspendAck, ReleaseAck, ThemePreference } from "./state.js";
 import {
   exportAppStateJson,
   importAppStateJson,
@@ -80,6 +80,7 @@ interface AppStore extends AppState {
   acknowledgeRelease: (categoryId: string, month: Month) => void;
 
   completeOnboarding: () => void;
+  setTheme: (theme: ThemePreference) => void;
 
   exportJson: () => string;
   importJson: (json: string) => void;
@@ -357,6 +358,7 @@ export const useAppStore = create<AppStore>()(
       }),
 
     completeOnboarding: () => set((s) => ({ ui: { ...s.ui, hasOnboarded: true } })),
+    setTheme: (theme) => set((s) => ({ ui: { ...s.ui, theme } })),
 
     exportJson: () => {
       const s = get();

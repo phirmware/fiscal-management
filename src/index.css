@@ -2,8 +2,139 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Theme tokens — RGB triplets so Tailwind's <alpha-value> placeholder works
+ * with opacity modifiers (e.g. bg-status-okSoft/60).
+ */
+:root {
+  --c-surface: 250 250 250;
+  --c-surface-card: 255 255 255;
+  --c-surface-sunken: 240 241 243;
+  --c-surface-border: 228 230 234;
+
+  --c-ink: 15 17 21;
+  --c-ink-soft: 58 63 72;
+  --c-ink-muted: 106 112 121;
+  --c-ink-faint: 156 163 173;
+
+  --c-status-ok: 22 163 74;
+  --c-status-ok-soft: 220 252 231;
+  --c-status-warn: 217 119 6;
+  --c-status-warn-soft: 254 243 199;
+  --c-status-over: 220 38 38;
+  --c-status-over-soft: 254 226 226;
+  --c-status-info: 37 99 235;
+  --c-status-info-soft: 219 234 254;
+
+  --c-group-needs: 2 132 199;
+  --c-group-wants: 147 51 234;
+  --c-group-savings: 5 150 105;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 17 21 / 0.05);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  /* Warm slate base — comfortable for evening use, not pure black. */
+  --c-surface: 16 20 28;
+  --c-surface-card: 26 31 42;
+  --c-surface-sunken: 36 43 58;
+  --c-surface-border: 52 62 82;
+
+  /* Off-white text with a touch of warmth — easier on the eyes than pure white. */
+  --c-ink: 234 237 244;
+  --c-ink-soft: 178 188 206;
+  --c-ink-muted: 128 138 158;
+  --c-ink-faint: 84 93 112;
+
+  /* Status — softer rose/amber, indigo over plain blue, teal-green throughout. */
+  --c-status-ok: 52 211 153;
+  --c-status-ok-soft: 17 46 33;
+  --c-status-warn: 251 191 36;
+  --c-status-warn-soft: 58 39 12;
+  --c-status-over: 251 113 133;
+  --c-status-over-soft: 64 26 36;
+  --c-status-info: 129 140 248;
+  --c-status-info-soft: 32 36 70;
+
+  /* Group hues — saturated enough to read on the slate, soft enough not to glare. */
+  --c-group-needs: 96 165 250;
+  --c-group-wants: 192 132 252;
+  --c-group-savings: 52 211 153;
+
+  /* Subtle top-edge highlight gives cards a "raised" feel against the slate. */
+  --shadow-card:
+    0 1px 2px 0 rgb(0 0 0 / 0.35),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.03);
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Smooth theme transitions, but respect reduced-motion preferences. */
+@media (prefers-reduced-motion: no-preference) {
+  body,
+  .card,
+  .pill,
+  .btn,
+  .input-base,
+  nav,
+  header,
+  section,
+  ul,
+  li,
+  table {
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      color 180ms ease;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface-card border border-surface-border rounded-2xl;
+    box-shadow: var(--shadow-card);
+  }
+  .pill {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .tap {
+    @apply min-h-11 min-w-11;
+  }
+  .input-base {
+    @apply w-full rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-base text-ink
+      placeholder:text-ink-faint
+      focus:outline-none focus:ring-2 focus:ring-status-info/40 focus:border-status-info;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold
+      transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-surface hover:bg-ink-soft;
+  }
+  .btn-secondary {
+    @apply btn bg-surface-sunken text-ink hover:bg-surface-border;
+  }
+  .btn-danger {
+    @apply btn bg-status-overSoft text-status-over hover:bg-status-over hover:text-surface;
+  }
+  .btn-ghost {
+    @apply btn text-ink hover:bg-surface-sunken;
+  }
+}
+
 @media print {
-  /* Hide app chrome; show only the statement card. */
   nav,
   header,
   .print\:hidden {
@@ -12,6 +143,7 @@
   body,
   main {
     background: #fff !important;
+    color: #000 !important;
     padding: 0 !important;
     margin: 0 !important;
     max-width: none !important;
@@ -28,48 +160,5 @@
   tr {
     page-break-inside: avoid;
     page-break-after: auto;
-  }
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: contain;
-}
-
-@layer components {
-  .card {
-    @apply bg-surface-card border border-surface-border rounded-2xl shadow-sm;
-  }
-  .pill {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-  }
-  .tap {
-    @apply min-h-11 min-w-11;
-  }
-  .input-base {
-    @apply w-full rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-base
-      focus:outline-none focus:ring-2 focus:ring-status-info/30 focus:border-status-info;
-  }
-  .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold
-      transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
-  }
-  .btn-primary {
-    @apply btn bg-ink text-white hover:bg-ink-soft;
-  }
-  .btn-secondary {
-    @apply btn bg-surface-sunken text-ink hover:bg-surface-border;
-  }
-  .btn-danger {
-    @apply btn bg-status-overSoft text-status-over hover:bg-status-over hover:text-white;
-  }
-  .btn-ghost {
-    @apply btn text-ink hover:bg-surface-sunken;
   }
 }

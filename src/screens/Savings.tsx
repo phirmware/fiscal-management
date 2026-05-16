@@ -117,7 +117,7 @@ export function SavingsScreen() {
                 type="button"
                 className={`text-xs px-2 py-1 rounded-lg ${
                   trendRange === n
-                    ? "bg-ink text-white font-semibold"
+                    ? "bg-ink text-surface font-semibold"
                     : "bg-surface-sunken text-ink-muted"
                 }`}
                 onClick={() => setTrendRange(n)}

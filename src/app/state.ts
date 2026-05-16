@@ -10,10 +10,13 @@ export interface ReleaseAck {
   month: Month;
 }
 
+export type ThemePreference = "light" | "dark" | "system";
+
 export interface UiState {
   selectedMonth: Month;
   lastUsedCategoryId: string | null;
   hasOnboarded: boolean;
+  theme: ThemePreference;
 }
 
 export interface AppState {
@@ -49,6 +52,7 @@ export function emptyAppState(now: Date = new Date()): AppState {
       selectedMonth: currentMonth(now),
       lastUsedCategoryId: null,
       hasOnboarded: false,
+      theme: "system",
     },
   };
 }

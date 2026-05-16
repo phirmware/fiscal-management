@@ -240,7 +240,7 @@ function AddCategoryModal({
               key={g}
               type="button"
               className={`btn ${
-                group === g ? "bg-ink text-white" : "bg-surface-sunken text-ink"
+                group === g ? "bg-ink text-surface" : "bg-surface-sunken text-ink"
               } px-0`}
               onClick={() => setGroup(g)}
             >
@@ -255,7 +255,7 @@ function AddCategoryModal({
               key={t}
               type="button"
               className={`btn ${
-                type === t ? "bg-ink text-white" : "bg-surface-sunken text-ink"
+                type === t ? "bg-ink text-surface" : "bg-surface-sunken text-ink"
               }`}
               onClick={() => setType(t)}
             >

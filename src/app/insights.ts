@@ -47,10 +47,13 @@ export interface FlowGraph {
 }
 
 const GROUP_COLOURS: Record<Group, string> = {
-  Needs: "#0284c7",
-  Wants: "#9333ea",
-  Savings: "#059669",
+  Needs: "rgb(var(--c-group-needs))",
+  Wants: "rgb(var(--c-group-wants))",
+  Savings: "rgb(var(--c-group-savings))",
 };
+
+const INCOME_COLOUR = "rgb(var(--c-ink))";
+const UNASSIGNED_COLOUR = "rgb(var(--c-ink-muted))";
 
 /**
  * 3-column flow: Income (col 0) → Groups (col 1) → Categories (col 2) +
@@ -87,7 +90,7 @@ export function buildFlow(
   const nodes: FlowNode[] = [];
   const links: FlowLink[] = [];
 
-  nodes.push({ id: "income", label: "Income", amount: totalIncome, colour: "#0f1115", column: 0 });
+  nodes.push({ id: "income", label: "Income", amount: totalIncome, colour: INCOME_COLOUR, column: 0 });
 
   for (const g of ["Needs", "Wants", "Savings"] as const) {
     if (groupSpend[g] <= 0) continue;
@@ -101,7 +104,7 @@ export function buildFlow(
       id: "unassigned",
       label: "Not yet assigned",
       amount: notYetAssigned,
-      colour: "#6a7079",
+      colour: UNASSIGNED_COLOUR,
       column: 1,
     });
     links.push({ from: "income", to: "unassigned", amount: notYetAssigned });

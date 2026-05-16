@@ -115,7 +115,7 @@ export function ReportsScreen() {
               key={n}
               type="button"
               className={`btn text-sm py-2 px-0 ${
-                span === n ? "bg-ink text-white" : "bg-surface-sunken text-ink-soft"
+                span === n ? "bg-ink text-surface" : "bg-surface-sunken text-ink-soft"
               }`}
               onClick={() => setSpan(n)}
             >

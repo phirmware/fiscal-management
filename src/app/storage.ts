@@ -56,6 +56,7 @@ export function normaliseAppState(input: unknown): AppState {
       selectedMonth: src.ui?.selectedMonth ?? base.ui.selectedMonth,
       lastUsedCategoryId: src.ui?.lastUsedCategoryId ?? null,
       hasOnboarded: src.ui?.hasOnboarded ?? false,
+      theme: src.ui?.theme ?? "system",
     },
   };
 }
