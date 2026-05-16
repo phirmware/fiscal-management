@@ -91,6 +91,21 @@ describe("app store", () => {
     expect(cat.carryIn).toBe(0);
   });
 
+  it("setBudget(0) keeps an explicit zero record (so prefill stays suppressed)", () => {
+    const fun = useAppStore.getState().addCategory({
+      name: "Fun",
+      group: "Wants",
+      type: "Limit",
+      fromMonth: "2026-04",
+    });
+    useAppStore.getState().setBudget(fun, "2026-04", 80);
+    useAppStore.getState().setBudget(fun, "2026-05", 0);
+    const budgets = useAppStore.getState().budget.budgets.filter((b) => b.categoryId === fun);
+    expect(budgets).toHaveLength(2);
+    const may = budgets.find((b) => b.month === "2026-05")!;
+    expect(may.amount).toBe(0);
+  });
+
   it("setSavingsEntry upserts; deleting with amount 0 removes it", () => {
     const id = useAppStore.getState().addSavingsAccount({ name: "Holiday", startingBalance: 0 });
     useAppStore.getState().setSavingsEntry(id, M, 100);

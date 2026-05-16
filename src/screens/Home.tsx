@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { computeMonth, computeSavings } from "../engine.js";
 import {
+  categoryRows,
   fiftyThirtyTwentyBenchmark,
   groupTotals,
   monthBreakdown,
@@ -49,10 +50,14 @@ export function HomeScreen() {
 
   const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
   const savingsSummary = useMemo(() => computeSavings(budget, month), [budget, month]);
+  const rows = useMemo(
+    () => categoryRows(budget, monthSummary, acks, month),
+    [budget, monthSummary, acks, month],
+  );
   const breakdown = monthBreakdown(monthSummary, savingsSummary);
   const totals = groupTotals(budget, monthSummary, savingsSummary);
   const benchmark = fiftyThirtyTwentyBenchmark(monthSummary.income);
-  const unresolved = unresolvedOverspends(budget, monthSummary, acks, month);
+  const unresolved = unresolvedOverspends(rows);
 
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [draftIncome, setDraftIncome] = useState<string>(String(monthSummary.income || ""));

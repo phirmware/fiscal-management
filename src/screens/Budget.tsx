@@ -25,7 +25,7 @@ export function BudgetScreen() {
     () => categoryRows(budget, monthSummary, acks, month),
     [budget, monthSummary, acks, month],
   );
-  const unresolved = unresolvedOverspends(budget, monthSummary, acks, month);
+  const unresolved = unresolvedOverspends(rows);
 
   const [overspendFor, setOverspendFor] = useState<OverspendRow | null>(null);
   const [addOpen, setAddOpen] = useState(false);

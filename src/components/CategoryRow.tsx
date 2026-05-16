@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { CategoryRow as CategoryRowData } from "../app/derived.js";
 import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
 import { useAppStore } from "../app/store.js";
+import { monthLabel } from "../app/utils/month.js";
 import { ProgressBar } from "./ProgressBar.js";
 
 const STATUS_TAG_CLASSES: Record<string, string> = {
@@ -26,22 +27,28 @@ interface Props {
 export function CategoryRow({ row, month, onResolveOverspend }: Props) {
   const setBudget = useAppStore((s) => s.setBudget);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState<string>(row.budgeted.toString());
+  const [draft, setDraft] = useState<string>("");
+
+  const isPrefilled = row.prefillSourceMonth !== null;
+
+  function startEdit() {
+    setDraft(row.budgeted > 0 ? String(row.budgeted) : "");
+    setEditing(true);
+  }
 
   function commit() {
     const v = parseMoneyInput(draft);
-    if (v !== null && v !== row.budgeted) setBudget(row.categoryId, month, v);
+    if (v !== null) setBudget(row.categoryId, month, v);
     setEditing(false);
   }
 
-  const used = row.type === "Pot" ? row.spent : row.spent;
   const reference = row.type === "Pot" ? row.budgeted + row.carryIn : row.budgeted;
 
   return (
     <div className="card p-3 flex flex-col gap-2">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-semibold text-ink truncate">{row.name}</h3>
             <span className={`pill ${GROUP_CLASSES[row.group] ?? ""}`}>{row.group}</span>
             <span className="pill bg-surface-sunken text-ink-muted">{row.type}</span>
@@ -56,6 +63,14 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               >
                 {row.carryIn > 0 ? "+" : "−"}
                 {formatGBP(Math.abs(row.carryIn))} carried
+              </span>
+            )}
+            {isPrefilled && row.budgeted > 0 && (
+              <span
+                className="pill bg-status-infoSoft text-status-info"
+                title={`Prefilled from ${monthLabel(row.prefillSourceMonth!)} — tap the budget to confirm or change it.`}
+              >
+                from {monthLabel(row.prefillSourceMonth!)}
               </span>
             )}
           </div>
@@ -86,21 +101,19 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
             <button
               type="button"
               className="tap text-status-info font-semibold underline underline-offset-2"
-              onClick={() => {
-                setDraft("");
-                setEditing(true);
-              }}
+              onClick={startEdit}
             >
               Set budget
             </button>
           ) : (
             <button
               type="button"
-              className="tap font-semibold text-ink border-b border-dashed border-ink-faint"
-              onClick={() => {
-                setDraft(String(row.budgeted));
-                setEditing(true);
-              }}
+              className={`tap font-semibold border-b border-dashed ${
+                isPrefilled
+                  ? "text-ink-soft border-status-info/50 italic"
+                  : "text-ink border-ink-faint"
+              }`}
+              onClick={startEdit}
             >
               {formatGBP(row.budgeted)}
             </button>
@@ -115,7 +128,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           <div
             className={`font-semibold ${
               row.available < 0 ? "text-status-over" : "text-ink"
-            }`}
+            } ${isPrefilled ? "italic text-ink-soft" : ""}`}
           >
             {row.available < 0 ? "−" : ""}
             {formatGBP(Math.abs(row.available))}
@@ -123,7 +136,13 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
         </div>
       </div>
 
-      <ProgressBar used={used} total={reference} status={row.status} />
+      <ProgressBar used={row.spent} total={reference} status={row.status} />
+
+      {isPrefilled && row.budgeted > 0 && (
+        <p className="text-xs text-ink-muted">
+          Showing last month's budget. Tap to confirm or change for {monthLabel(month)}.
+        </p>
+      )}
 
       {row.available < 0 && (
         <div className="flex items-center justify-between gap-2 mt-1">

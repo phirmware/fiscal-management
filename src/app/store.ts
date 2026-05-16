@@ -89,14 +89,10 @@ function upsertBudget(
   month: Month,
   amount: number,
 ): MonthlyBudget[] {
+  // We keep zero-amount records on purpose: the *presence* of a record
+  // marks the month as user-reviewed and suppresses prefill from a prior month.
   const idx = budgets.findIndex((b) => b.categoryId === categoryId && b.month === month);
-  if (idx === -1) {
-    if (amount === 0) return budgets;
-    return [...budgets, { categoryId, month, amount }];
-  }
-  if (amount === 0) {
-    return [...budgets.slice(0, idx), ...budgets.slice(idx + 1)];
-  }
+  if (idx === -1) return [...budgets, { categoryId, month, amount }];
   const next = budgets.slice();
   next[idx] = { categoryId, month, amount };
   return next;
@@ -110,16 +106,11 @@ function changeBudget(
 ): MonthlyBudget[] {
   const idx = budgets.findIndex((b) => b.categoryId === categoryId && b.month === month);
   if (idx === -1) {
-    if (delta === 0) return budgets;
     return [...budgets, { categoryId, month, amount: delta }];
   }
   const current = budgets[idx]!;
-  const nextAmount = current.amount + delta;
-  if (nextAmount === 0) {
-    return [...budgets.slice(0, idx), ...budgets.slice(idx + 1)];
-  }
   const next = budgets.slice();
-  next[idx] = { ...current, amount: nextAmount };
+  next[idx] = { ...current, amount: current.amount + delta };
   return next;
 }
 

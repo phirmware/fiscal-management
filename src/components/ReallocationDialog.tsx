@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { computeMonth } from "../engine.js";
-import { reallocationDonors } from "../app/derived.js";
+import { categoryRows, reallocationDonors } from "../app/derived.js";
 import type { OverspendRow } from "../app/derived.js";
 import { useAppStore } from "../app/store.js";
 import { formatGBP } from "../app/utils/money.js";
@@ -16,6 +16,7 @@ type Choice = "reallocate" | "cover" | "accept";
 
 export function ReallocationDialog({ row, month, onClose }: Props) {
   const budget = useAppStore((s) => s.budget);
+  const acks = useAppStore((s) => s.overspendAcks);
   const reallocate = useAppStore((s) => s.reallocateFromCategory);
   const cover = useAppStore((s) => s.coverFromUnallocated);
   const acknowledge = useAppStore((s) => s.acknowledgeOverspend);
@@ -26,8 +27,9 @@ export function ReallocationDialog({ row, month, onClose }: Props) {
   const donors = useMemo(() => {
     if (!row) return [];
     const m = computeMonth(budget, month);
-    return reallocationDonors(budget, m, row.categoryId, row.amount);
-  }, [budget, month, row]);
+    const rows = categoryRows(budget, m, acks, month);
+    return reallocationDonors(rows, row.categoryId, row.amount);
+  }, [budget, acks, month, row]);
 
   if (!row) return null;
 
