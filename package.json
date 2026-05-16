@@ -1,0 +1,19 @@
+{
+  "name": "budgetting",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal budgeting app — Phase 1: data model + carry-forward engine.",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "demo": "tsx src/demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.1",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
