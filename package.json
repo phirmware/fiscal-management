@@ -1,19 +1,35 @@
 {
   "name": "budgetting",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Personal budgeting app — Phase 1: data model + carry-forward engine.",
+  "description": "Personal budgeting app — Phase 2 MVP: UI on top of the frozen engine.",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "demo": "tsx src/demo.ts",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.4"
+  },
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.19",
+    "jsdom": "^24.1.0",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.4",
     "tsx": "^4.7.1",
     "typescript": "^5.4.5",
+    "vite": "^5.3.1",
     "vitest": "^1.6.0"
   }
 }
