@@ -9,9 +9,15 @@ interface Props {
 const WIDTH = 480;
 const COL_X = [10, 220, 466];
 const NODE_W = 8;
-const MIN_NODE_H = 4;
-const NODE_GAP = 8;
-const PAD_Y = 14;
+// Minimum tall enough to fit a 2-line label (name + amount) without
+// crashing into the next node. Larger amounts grow above this floor.
+const MIN_NODE_H = 26;
+const NODE_GAP = 18;
+const PAD_Y = 18;
+// Per-node vertical budget — the diagram grows with the number of items
+// so categories never pack so tightly that labels overlap.
+const HEIGHT_PER_NODE = 56;
+const MIN_HEIGHT = 360;
 
 interface LaidNode extends FlowNode {
   x: number;
@@ -59,8 +65,14 @@ export function FlowDiagram({ graph }: Props) {
     const col2Sum = col2.reduce((s, n) => s + n.amount, 0);
     const maxColAmount = Math.max(total, col1Sum, col2Sum, 1);
     const maxNodeCount = Math.max(col0.length, col1.length, col2.length, 1);
-    const targetHeight = 440;
-    const scale = (targetHeight - PAD_Y * 2 - NODE_GAP * (maxNodeCount - 1)) / maxColAmount;
+    // Grow target height with item count so categories breathe.
+    const targetHeight = Math.max(MIN_HEIGHT, maxNodeCount * HEIGHT_PER_NODE + PAD_Y * 2);
+    const usableHeight = targetHeight - PAD_Y * 2 - NODE_GAP * (maxNodeCount - 1);
+    // Pick the larger of: amount-based scale, or just-enough-for-min-height scale.
+    // This keeps small categories readable without distorting the big ones.
+    const amountScale = usableHeight / maxColAmount;
+    const minScale = MIN_NODE_H / Math.max(1, maxColAmount);
+    const scale = Math.max(amountScale, minScale);
 
     const a = layoutColumn(col0, COL_X[0]!, scale);
     const b = layoutColumn(col1, COL_X[1]!, scale);
@@ -95,7 +107,7 @@ export function FlowDiagram({ graph }: Props) {
         key={`l${i}`}
         d={ribbonPath(from.x + NODE_W, fromY, ribbonH, to.x, toY, ribbonH)}
         style={{ fill: to.colour }}
-        opacity={0.25}
+        opacity={0.2}
       />
     );
   });
