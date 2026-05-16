@@ -82,10 +82,21 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
                 if (e.key === "Escape") setEditing(false);
               }}
             />
+          ) : row.budgeted === 0 ? (
+            <button
+              type="button"
+              className="tap text-status-info font-semibold underline underline-offset-2"
+              onClick={() => {
+                setDraft("");
+                setEditing(true);
+              }}
+            >
+              Set budget
+            </button>
           ) : (
             <button
               type="button"
-              className="font-semibold text-ink underline-offset-2 hover:underline"
+              className="tap font-semibold text-ink border-b border-dashed border-ink-faint"
               onClick={() => {
                 setDraft(String(row.budgeted));
                 setEditing(true);

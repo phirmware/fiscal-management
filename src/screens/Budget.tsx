@@ -10,12 +10,15 @@ import { ReallocationDialog } from "../components/ReallocationDialog.js";
 import { Modal } from "../components/Modal.js";
 import type { CategoryType, Group } from "../types.js";
 import { parseMoneyInput } from "../app/utils/money.js";
+import { monthLabel } from "../app/utils/month.js";
 
 export function BudgetScreen() {
   const budget = useAppStore((s) => s.budget);
   const acks = useAppStore((s) => s.overspendAcks);
   const month = useAppStore((s) => s.ui.selectedMonth);
   const addCategory = useAppStore((s) => s.addCategory);
+
+  const setBudget = useAppStore((s) => s.setBudget);
 
   const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
   const rows = useMemo(
@@ -107,8 +110,11 @@ export function BudgetScreen() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         defaultMonth={month}
-        onSubmit={(payload) => {
-          addCategory(payload);
+        onSubmit={({ monthlyBudget, ...payload }) => {
+          const id = addCategory(payload);
+          if (monthlyBudget !== undefined && monthlyBudget > 0) {
+            setBudget(id, month, monthlyBudget);
+          }
           setAddOpen(false);
         }}
       />
@@ -131,6 +137,7 @@ function AddCategoryModal({
     type: CategoryType;
     fromMonth: string;
     annualTarget?: number;
+    monthlyBudget?: number;
   }) => void;
 }) {
   const [name, setName] = useState("");
@@ -138,22 +145,26 @@ function AddCategoryModal({
   const [type, setType] = useState<CategoryType>("Limit");
   const [advanced, setAdvanced] = useState(false);
   const [annualTarget, setAnnualTarget] = useState("");
+  const [monthlyBudget, setMonthlyBudget] = useState("");
 
   function submit() {
     const trimmed = name.trim();
     if (!trimmed) return;
     const tgt = parseMoneyInput(annualTarget);
+    const budgetAmount = parseMoneyInput(monthlyBudget);
     onSubmit({
       name: trimmed,
       group,
       type,
       fromMonth: defaultMonth,
       ...(tgt !== null ? { annualTarget: tgt } : {}),
+      ...(budgetAmount !== null ? { monthlyBudget: budgetAmount } : {}),
     });
     setName("");
     setGroup("Needs");
     setType("Limit");
     setAnnualTarget("");
+    setMonthlyBudget("");
     setAdvanced(false);
   }
 
@@ -219,6 +230,22 @@ function AddCategoryModal({
             ? "Resets every month — for monthly spending ceilings like groceries."
             : "Accumulates over time — for irregular costs like gifts or car maintenance."}
         </p>
+
+        <label className="text-sm">
+          <span className="block text-ink-soft mb-1">
+            Budget for {monthLabel(defaultMonth)} (optional)
+          </span>
+          <input
+            className="input-base"
+            inputMode="decimal"
+            value={monthlyBudget}
+            onChange={(e) => setMonthlyBudget(e.target.value)}
+            placeholder="0.00"
+          />
+          <p className="text-xs text-ink-muted mt-1">
+            You can change this any time by tapping the budgeted amount on the category row.
+          </p>
+        </label>
 
         <button
           type="button"
