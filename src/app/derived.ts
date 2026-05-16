@@ -1,3 +1,4 @@
+import { computeMonth } from "../engine.js";
 import type {
   BudgetState,
   Category,
@@ -5,17 +6,22 @@ import type {
   Group,
   Month,
   MonthSummary,
-  SavingsSummary,
 } from "../types.js";
 import type { OverspendAck } from "./state.js";
 import { isAcked } from "./state.js";
+import { nextMonth } from "./utils/month.js";
 
 export type StatusBucket = "ok" | "close" | "over" | "empty";
 
 export interface MonthBreakdown {
   income: number;
-  budgeted: number;
-  savings: number;
+  /** Budget for Needs + Wants categories only. */
+  spendingBudget: number;
+  /** Sum of budgets for Savings-tagged categories. */
+  savingsAllocated: number;
+  /** Net savings activity this month: Σ (budgeted − spent) for Savings categories. */
+  savingsThisMonth: number;
+  /** Income minus the full budgeted total. Equals engine.unallocated. */
   notYetAssigned: number;
 }
 
@@ -63,22 +69,94 @@ export interface PrefillResult {
   sourceMonth: Month | null;
 }
 
-export function notYetAssigned(
-  monthSummary: MonthSummary,
-  savingsSummary: SavingsSummary,
-): number {
-  return monthSummary.unallocated - savingsSummary.monthTotal;
+export function notYetAssigned(monthSummary: MonthSummary): number {
+  // Savings now lives in categories, so the budgeted total already accounts
+  // for it — no extra subtraction needed beyond engine.unallocated.
+  return monthSummary.unallocated;
+}
+
+export function savingsCategoryIds(state: BudgetState): Set<string> {
+  const ids = new Set<string>();
+  for (const c of state.categories) {
+    if (c.group === "Savings") ids.add(c.id);
+  }
+  return ids;
+}
+
+/** Σ budgeted for Savings-tagged categories (planning intent). */
+export function savingsAllocated(state: BudgetState, monthSummary: MonthSummary): number {
+  const ids = savingsCategoryIds(state);
+  let total = 0;
+  for (const r of monthSummary.categories) {
+    if (ids.has(r.categoryId)) total += r.budgeted;
+  }
+  return total;
+}
+
+/**
+ * Per-category savings amount for the month: max(budgeted, spent).
+ *
+ * This covers both workflows users have:
+ *  - Set a budget and don't log a transaction (budget is the savings amount).
+ *  - Log a transaction as the deposit (no budget needed).
+ *  - Do both — no double-counting.
+ *
+ * The downside is that a legitimate large withdrawal (spent ≫ budget) is
+ * read as "deposited the larger amount", but that's an unusual case for
+ * Savings categories and the Pot's `available` still tells the true story.
+ */
+export function savingsThisMonth(state: BudgetState, monthSummary: MonthSummary): number {
+  const ids = savingsCategoryIds(state);
+  let total = 0;
+  for (const r of monthSummary.categories) {
+    if (ids.has(r.categoryId)) total += Math.max(r.budgeted, r.spent);
+  }
+  return total;
+}
+
+function earliestRelevantMonth(state: BudgetState, ids: Set<string>): Month | null {
+  let earliest: Month | null = null;
+  const consider = (m: Month) => {
+    if (!earliest || m < earliest) earliest = m;
+  };
+  for (const b of state.budgets) if (ids.has(b.categoryId)) consider(b.month);
+  for (const t of state.transactions) if (ids.has(t.categoryId)) consider(t.date.slice(0, 7));
+  for (const c of state.categories) {
+    if (!ids.has(c.id)) continue;
+    const first = c.typeSegments[0];
+    if (first) consider(first.fromMonth);
+  }
+  return earliest;
+}
+
+/** Cumulative savings from inception through (and including) `throughMonth`. */
+export function cumulativeSavings(state: BudgetState, throughMonth: Month): number {
+  const ids = savingsCategoryIds(state);
+  if (ids.size === 0) return 0;
+  const earliest = earliestRelevantMonth(state, ids);
+  if (!earliest || earliest > throughMonth) return 0;
+  let total = 0;
+  let m: Month = earliest;
+  while (m <= throughMonth) {
+    total += savingsThisMonth(state, computeMonth(state, m));
+    if (m === throughMonth) break;
+    m = nextMonth(m);
+  }
+  return total;
 }
 
 export function monthBreakdown(
+  state: BudgetState,
   monthSummary: MonthSummary,
-  savingsSummary: SavingsSummary,
 ): MonthBreakdown {
+  const allocated = savingsAllocated(state, monthSummary);
+  const net = savingsThisMonth(state, monthSummary);
   return {
     income: monthSummary.income,
-    budgeted: monthSummary.totalBudgeted,
-    savings: savingsSummary.monthTotal,
-    notYetAssigned: notYetAssigned(monthSummary, savingsSummary),
+    spendingBudget: monthSummary.totalBudgeted - allocated,
+    savingsAllocated: allocated,
+    savingsThisMonth: net,
+    notYetAssigned: notYetAssigned(monthSummary),
   };
 }
 
@@ -193,25 +271,23 @@ export function unresolvedOverspends(rows: CategoryRow[]): OverspendRow[] {
 export function groupTotals(
   state: BudgetState,
   monthSummary: MonthSummary,
-  savingsSummary: SavingsSummary,
 ): GroupTotals {
   const byId = new Map<string, Category>();
   for (const c of state.categories) byId.set(c.id, c);
 
   let needs = 0;
   let wants = 0;
-  let savingsFromCategories = 0;
   for (const r of monthSummary.categories) {
     const cat = byId.get(r.categoryId);
     if (!cat) continue;
     if (cat.group === "Needs") needs += r.spent;
     else if (cat.group === "Wants") wants += r.spent;
-    else savingsFromCategories += r.spent;
   }
   return {
     needs,
     wants,
-    savings: savingsFromCategories + savingsSummary.monthTotal,
+    // Savings actual = net savings activity from Savings categories.
+    savings: Math.max(0, savingsThisMonth(state, monthSummary)),
   };
 }
 

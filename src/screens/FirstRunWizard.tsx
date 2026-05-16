@@ -22,6 +22,9 @@ const STARTERS: StarterCategory[] = [
   { name: "Travel", group: "Wants", type: "Pot", defaultPctOfIncome: 0.05 },
   { name: "Car maintenance", group: "Needs", type: "Pot", defaultPctOfIncome: 0.04 },
   { name: "Home maintenance", group: "Needs", type: "Pot", defaultPctOfIncome: 0.03 },
+  { name: "Emergency fund", group: "Savings", type: "Pot", defaultPctOfIncome: 0.1 },
+  { name: "Retirement", group: "Savings", type: "Pot", defaultPctOfIncome: 0.05 },
+  { name: "House deposit", group: "Savings", type: "Pot", defaultPctOfIncome: 0.05 },
 ];
 
 type Selection = Record<string, { selected: boolean; amount: string }>;
@@ -30,13 +33,10 @@ export function FirstRunWizard() {
   const setIncome = useAppStore((s) => s.setIncome);
   const addCategory = useAppStore((s) => s.addCategory);
   const setBudget = useAppStore((s) => s.setBudget);
-  const addSavingsAccount = useAppStore((s) => s.addSavingsAccount);
   const completeOnboarding = useAppStore((s) => s.completeOnboarding);
 
   const month = currentMonth();
   const [incomeDraft, setIncomeDraft] = useState("");
-  const [savingsName, setSavingsName] = useState("Emergency fund");
-  const [savingsOn, setSavingsOn] = useState(true);
   const [selection, setSelection] = useState<Selection>(() =>
     Object.fromEntries(STARTERS.map((s) => [s.name, { selected: true, amount: "" }])),
   );
@@ -76,9 +76,6 @@ export function FirstRunWizard() {
       const amount = userAmount !== null ? userAmount : suggestedAmount(s);
       if (amount > 0) setBudget(id, month, amount);
     }
-    if (savingsOn && savingsName.trim()) {
-      addSavingsAccount({ name: savingsName.trim(), startingBalance: 0 });
-    }
     completeOnboarding();
   }
 
@@ -88,7 +85,7 @@ export function FirstRunWizard() {
         <header>
           <h1 className="text-xl font-semibold">Welcome</h1>
           <p className="text-sm text-ink-soft mt-1">
-            Three quick steps. Everything stays on this device — no account, no sync.
+            Two quick steps. Everything stays on this device — no account, no sync.
           </p>
         </header>
 
@@ -156,28 +153,6 @@ export function FirstRunWizard() {
               );
             })}
           </ul>
-        </section>
-
-        <section className="card p-4">
-          <h2 className="text-sm font-semibold text-ink-soft">3. Savings account (optional)</h2>
-          <label className="mt-2 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="tap"
-              checked={savingsOn}
-              onChange={() => setSavingsOn((v) => !v)}
-            />
-            Create an account named:
-          </label>
-          <input
-            className="input-base mt-2"
-            value={savingsName}
-            onChange={(e) => setSavingsName(e.target.value)}
-            disabled={!savingsOn}
-          />
-          <p className="text-xs text-ink-muted mt-2">
-            You'll log monthly contributions on the Insights → Savings tab.
-          </p>
         </section>
 
         <div className="sticky bottom-0 pb-[env(safe-area-inset-bottom)] pt-2 bg-surface">

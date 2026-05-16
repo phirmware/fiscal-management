@@ -39,7 +39,7 @@ function Row({
 }
 
 export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBreakdownProps) {
-  const { income, budgeted, savings, notYetAssigned } = breakdown;
+  const { income, spendingBudget, savingsAllocated, notYetAssigned } = breakdown;
 
   return (
     <section className="card p-4">
@@ -58,12 +58,17 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
 
       <div className="mt-2">
         <Row label="Net income" value={income} />
-        <Row label="− Budgeted to categories" value={budgeted} prefix="−" />
         <Row
-          label="− Recorded to savings"
-          value={savings}
+          label="− Spending budget"
+          value={spendingBudget}
           prefix="−"
-          hint="Sum of this month's savings entries"
+          hint="Sum of budgets for Needs + Wants categories"
+        />
+        <Row
+          label="− Savings allocated"
+          value={savingsAllocated}
+          prefix="−"
+          hint="Sum of budgets for Savings categories"
         />
         <div className="border-t border-surface-border mt-1 pt-1">
           <Row

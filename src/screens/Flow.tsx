@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { computeMonth, computeSavings } from "../engine.js";
+import { computeMonth } from "../engine.js";
 import { buildFlow } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { monthLabel } from "../app/utils/month.js";
@@ -12,8 +12,7 @@ export function FlowScreen() {
 
   const flow = useMemo(() => {
     const m = computeMonth(budget, month);
-    const sav = computeSavings(budget, month);
-    return buildFlow(budget, m, sav);
+    return buildFlow(budget, m);
   }, [budget, month]);
 
   const allocated = flow.nodes

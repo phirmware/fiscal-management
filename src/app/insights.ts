@@ -1,12 +1,12 @@
-import { computeMonth, computeSavings } from "../engine.js";
+import { computeMonth } from "../engine.js";
 import type {
   BudgetState,
   Category,
   Group,
   Month,
   MonthSummary,
-  SavingsSummary,
 } from "../types.js";
+import { cumulativeSavings, savingsThisMonth } from "./derived.js";
 import { isAcked } from "./state.js";
 import type { ReleaseAck } from "./state.js";
 import { monthsBetween, nextMonth, prevMonth } from "./utils/month.js";
@@ -20,8 +20,12 @@ export interface SavingsTrendPoint {
 export function savingsTrend(state: BudgetState, fromMonth: Month, toMonth: Month): SavingsTrendPoint[] {
   const months = monthsBetween(fromMonth, toMonth);
   return months.map((m) => {
-    const s = computeSavings(state, m);
-    return { month: m, monthTotal: s.monthTotal, cumulativeTotal: s.cumulativeTotal };
+    const summary = computeMonth(state, m);
+    return {
+      month: m,
+      monthTotal: savingsThisMonth(state, summary),
+      cumulativeTotal: cumulativeSavings(state, m),
+    };
   });
 }
 
@@ -56,35 +60,37 @@ const INCOME_COLOUR = "rgb(var(--c-ink))";
 const UNASSIGNED_COLOUR = "rgb(var(--c-ink-muted))";
 
 /**
- * 3-column flow: Income (col 0) → Groups (col 1) → Categories (col 2) +
- * a Savings node beside the Savings group. The unspent remainder per category
- * is folded into a single "Not yet assigned" node so totals balance to income.
+ * 3-column flow: Income (col 0) → Groups (col 1) → Categories (col 2).
+ * Needs/Wants use spent amounts (actual consumption); Savings uses
+ * (budgeted − spent) per category (net amount saved this month).
+ * Anything not accounted for flows into a "Not yet assigned" node so
+ * the columns balance to income.
  */
 export function buildFlow(
   state: BudgetState,
   monthSummary: MonthSummary,
-  savingsSummary: SavingsSummary,
 ): FlowGraph {
   const byId = new Map<string, Category>();
   for (const c of state.categories) byId.set(c.id, c);
 
   const totalIncome = monthSummary.income;
-  const groupSpend: Record<Group, number> = { Needs: 0, Wants: 0, Savings: 0 };
-  const categorySpend: { id: string; name: string; group: Group; spent: number }[] = [];
+  const groupAmount: Record<Group, number> = { Needs: 0, Wants: 0, Savings: 0 };
+  const categoryAmount: { id: string; name: string; group: Group; amount: number }[] = [];
 
   for (const r of monthSummary.categories) {
     const cat = byId.get(r.categoryId);
     if (!cat) continue;
-    groupSpend[cat.group] += r.spent;
-    if (r.spent > 0) {
-      categorySpend.push({ id: r.categoryId, name: cat.name, group: cat.group, spent: r.spent });
+    // Savings: max(budgeted, spent) — whichever way the user records it.
+    // Needs/Wants: spent (actual consumption).
+    const value =
+      cat.group === "Savings" ? Math.max(r.budgeted, r.spent) : Math.max(0, r.spent);
+    groupAmount[cat.group] += value;
+    if (value > 0) {
+      categoryAmount.push({ id: r.categoryId, name: cat.name, group: cat.group, amount: value });
     }
   }
 
-  // Savings entries flow into the Savings group total.
-  groupSpend.Savings += savingsSummary.monthTotal;
-
-  const allocated = groupSpend.Needs + groupSpend.Wants + groupSpend.Savings;
+  const allocated = groupAmount.Needs + groupAmount.Wants + groupAmount.Savings;
   const notYetAssigned = Math.max(0, totalIncome - allocated);
 
   const nodes: FlowNode[] = [];
@@ -93,10 +99,10 @@ export function buildFlow(
   nodes.push({ id: "income", label: "Income", amount: totalIncome, colour: INCOME_COLOUR, column: 0 });
 
   for (const g of ["Needs", "Wants", "Savings"] as const) {
-    if (groupSpend[g] <= 0) continue;
+    if (groupAmount[g] <= 0) continue;
     const id = `group:${g}`;
-    nodes.push({ id, label: g, amount: groupSpend[g], colour: GROUP_COLOURS[g], column: 1, group: g });
-    links.push({ from: "income", to: id, amount: groupSpend[g] });
+    nodes.push({ id, label: g, amount: groupAmount[g], colour: GROUP_COLOURS[g], column: 1, group: g });
+    links.push({ from: "income", to: id, amount: groupAmount[g] });
   }
 
   if (notYetAssigned > 0) {
@@ -110,22 +116,10 @@ export function buildFlow(
     links.push({ from: "income", to: "unassigned", amount: notYetAssigned });
   }
 
-  for (const c of categorySpend) {
+  for (const c of categoryAmount) {
     const id = `cat:${c.id}`;
-    nodes.push({ id, label: c.name, amount: c.spent, colour: GROUP_COLOURS[c.group], column: 2, group: c.group });
-    links.push({ from: `group:${c.group}`, to: id, amount: c.spent });
-  }
-
-  if (savingsSummary.monthTotal > 0) {
-    nodes.push({
-      id: "savings:total",
-      label: "Savings accounts",
-      amount: savingsSummary.monthTotal,
-      colour: GROUP_COLOURS.Savings,
-      column: 2,
-      group: "Savings",
-    });
-    links.push({ from: "group:Savings", to: "savings:total", amount: savingsSummary.monthTotal });
+    nodes.push({ id, label: c.name, amount: c.amount, colour: GROUP_COLOURS[c.group], column: 2, group: c.group });
+    links.push({ from: `group:${c.group}`, to: id, amount: c.amount });
   }
 
   return { nodes, links, totalIncome };
@@ -195,7 +189,7 @@ export function rangeSummary(state: BudgetState, fromMonth: Month, toMonth: Mont
     totalIncome += ms.income;
     totalBudgeted += ms.totalBudgeted;
     totalSpent += ms.totalSpent;
-    totalSaved += computeSavings(state, m).monthTotal;
+    totalSaved += savingsThisMonth(state, ms);
   }
   return {
     fromMonth,

@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
-import { computeMonth, computeSavings } from "../engine.js";
+import { computeMonth } from "../engine.js";
 import {
   categoryRows,
+  cumulativeSavings,
   fiftyThirtyTwentyBenchmark,
   groupTotals,
   monthBreakdown,
+  savingsCategoryIds,
+  savingsThisMonth,
   unresolvedOverspends,
 } from "../app/derived.js";
 import { useAppStore } from "../app/store.js";
@@ -63,15 +66,20 @@ export function HomeScreen() {
   const setIncome = useAppStore((s) => s.setIncome);
 
   const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
-  const savingsSummary = useMemo(() => computeSavings(budget, month), [budget, month]);
   const rows = useMemo(
     () => categoryRows(budget, monthSummary, acks, month),
     [budget, monthSummary, acks, month],
   );
-  const breakdown = monthBreakdown(monthSummary, savingsSummary);
-  const totals = groupTotals(budget, monthSummary, savingsSummary);
+  const breakdown = useMemo(() => monthBreakdown(budget, monthSummary), [budget, monthSummary]);
+  const totals = useMemo(() => groupTotals(budget, monthSummary), [budget, monthSummary]);
   const benchmark = fiftyThirtyTwentyBenchmark(monthSummary.income);
   const unresolved = unresolvedOverspends(rows);
+  const savedThisMonth = useMemo(
+    () => savingsThisMonth(budget, monthSummary),
+    [budget, monthSummary],
+  );
+  const savedCumulative = useMemo(() => cumulativeSavings(budget, month), [budget, month]);
+  const hasSavingsCategories = useMemo(() => savingsCategoryIds(budget).size > 0, [budget]);
 
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [draftIncome, setDraftIncome] = useState<string>(String(monthSummary.income || ""));
@@ -81,8 +89,6 @@ export function HomeScreen() {
     if (v !== null) setIncome(month, v);
     setIncomeOpen(false);
   }
-
-  const totalSavedCumulative = savingsSummary.cumulativeTotal;
 
   return (
     <div className="flex flex-col gap-4">
@@ -143,19 +149,19 @@ export function HomeScreen() {
           <div>
             <div className="text-xs text-ink-muted">This month</div>
             <div className="text-lg font-semibold tabular-nums">
-              {formatGBP(savingsSummary.monthTotal)}
+              {formatGBP(savedThisMonth)}
             </div>
           </div>
           <div className="text-right">
             <div className="text-xs text-ink-muted">Cumulative</div>
             <div className="text-lg font-semibold tabular-nums">
-              {formatGBP(totalSavedCumulative)}
+              {formatGBP(savedCumulative)}
             </div>
           </div>
         </div>
-        {budget.savingsAccounts.length === 0 && (
+        {!hasSavingsCategories && (
           <p className="text-xs text-ink-muted mt-2">
-            No savings accounts yet. Add one from Settings.
+            No Savings categories yet. Add one from Budget → + Category and tag it Savings.
           </p>
         )}
       </section>

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeMonth, computeSavings } from "../engine.js";
+import { computeMonth } from "../engine.js";
 import type { BudgetState } from "../types.js";
 import {
   categoryRows,
   categoryStatus,
+  cumulativeSavings,
   findPrefillBudget,
   fiftyThirtyTwentyBenchmark,
   groupTotals,
@@ -11,6 +12,8 @@ import {
   notYetAssigned,
   overspends,
   reallocationDonors,
+  savingsAllocated,
+  savingsThisMonth,
   unresolvedOverspends,
 } from "./derived.js";
 
@@ -42,42 +45,76 @@ function baseState(): BudgetState {
         archived: false,
         typeSegments: [{ fromMonth: M, type: "Pot" }],
       },
+      {
+        id: "ef",
+        name: "Emergency fund",
+        group: "Savings",
+        archived: false,
+        typeSegments: [{ fromMonth: M, type: "Pot" }],
+      },
     ],
     budgets: [
       { categoryId: "rent", month: M, amount: 800 },
       { categoryId: "groceries", month: M, amount: 300 },
       { categoryId: "fun", month: M, amount: 100 },
+      { categoryId: "ef", month: M, amount: 200 },
     ],
     transactions: [
       { id: "t1", categoryId: "rent", date: "2026-05-01", amount: 800 },
       { id: "t2", categoryId: "groceries", date: "2026-05-10", amount: 340 },
       { id: "t3", categoryId: "fun", date: "2026-05-12", amount: 40 },
     ],
-    savingsAccounts: [{ id: "emergency", name: "Emergency", startingBalance: 0 }],
-    savingsEntries: [{ accountId: "emergency", month: M, amount: 200 }],
+    savingsAccounts: [],
+    savingsEntries: [],
     income: [{ month: M, netAmount: 2000 }],
   };
 }
 
 describe("derived helpers", () => {
-  it("notYetAssigned = engine.unallocated - savingsThisMonth", () => {
+  it("notYetAssigned equals engine.unallocated (Savings categories already in totalBudgeted)", () => {
     const s = baseState();
     const m = computeMonth(s, M);
-    const sav = computeSavings(s, M);
-    expect(m.unallocated).toBe(2000 - 1200);
-    expect(sav.monthTotal).toBe(200);
-    expect(notYetAssigned(m, sav)).toBe(600);
+    // Total budgeted = 800 + 300 + 100 + 200 = 1400
+    expect(m.totalBudgeted).toBe(1400);
+    expect(m.unallocated).toBe(2000 - 1400);
+    expect(notYetAssigned(m)).toBe(600);
   });
 
-  it("monthBreakdown surfaces income, budgeted, savings, notYetAssigned", () => {
+  it("monthBreakdown splits Spending vs Savings vs Not yet assigned", () => {
     const s = baseState();
-    const breakdown = monthBreakdown(computeMonth(s, M), computeSavings(s, M));
+    const breakdown = monthBreakdown(s, computeMonth(s, M));
     expect(breakdown).toEqual({
       income: 2000,
-      budgeted: 1200,
-      savings: 200,
+      spendingBudget: 1200, // 800 + 300 + 100 (Needs + Wants)
+      savingsAllocated: 200, // ef budget
+      savingsThisMonth: 200, // ef budgeted - spent
       notYetAssigned: 600,
     });
+  });
+
+  it("savingsThisMonth / savingsAllocated / cumulativeSavings from Savings categories", () => {
+    const s = baseState();
+    const m = computeMonth(s, M);
+    expect(savingsAllocated(s, m)).toBe(200);
+    expect(savingsThisMonth(s, m)).toBe(200);
+    expect(cumulativeSavings(s, M)).toBe(200);
+  });
+
+  it("savingsThisMonth uses max(budgeted, spent) so transaction-only logging still counts", () => {
+    const s = baseState();
+    // Override: zero out the ef budget, log a £200 transaction instead.
+    s.budgets = s.budgets.filter((b) => b.categoryId !== "ef");
+    s.transactions.push({ id: "ef1", categoryId: "ef", date: `${M}-15`, amount: 200 });
+    const m = computeMonth(s, M);
+    expect(savingsAllocated(s, m)).toBe(0);
+    expect(savingsThisMonth(s, m)).toBe(200);
+  });
+
+  it("savingsThisMonth does not double-count when both budget and transaction match", () => {
+    const s = baseState();
+    s.transactions.push({ id: "ef1", categoryId: "ef", date: `${M}-15`, amount: 200 });
+    const m = computeMonth(s, M);
+    expect(savingsThisMonth(s, m)).toBe(200);
   });
 
   it("overspends flags categories with negative display-available", () => {
@@ -134,12 +171,12 @@ describe("derived helpers", () => {
     ).toBe("empty");
   });
 
-  it("groupTotals sums spending by group and adds savings entries", () => {
+  it("groupTotals sums spending by group, Savings = net savings from categories", () => {
     const s = baseState();
-    const totals = groupTotals(s, computeMonth(s, M), computeSavings(s, M));
-    expect(totals.needs).toBe(1140);
-    expect(totals.wants).toBe(40);
-    expect(totals.savings).toBe(200);
+    const totals = groupTotals(s, computeMonth(s, M));
+    expect(totals.needs).toBe(1140); // rent 800 + groceries 340
+    expect(totals.wants).toBe(40); // fun 40
+    expect(totals.savings).toBe(200); // ef net (200 - 0)
   });
 
   it("fiftyThirtyTwentyBenchmark returns split of income", () => {

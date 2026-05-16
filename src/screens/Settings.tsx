@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { resolveType } from "../engine.js";
 import { useAppStore } from "../app/store.js";
 import { Modal } from "../components/Modal.js";
-import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
 import type { CategoryType } from "../types.js";
 import type { ThemePreference } from "../app/state.js";
@@ -14,7 +13,6 @@ export function SettingsScreen() {
   const setCategoryGroup = useAppStore((s) => s.setCategoryGroup);
   const archiveCategory = useAppStore((s) => s.archiveCategory);
   const convertCategoryType = useAppStore((s) => s.convertCategoryType);
-  const addSavingsAccount = useAppStore((s) => s.addSavingsAccount);
   const exportJson = useAppStore((s) => s.exportJson);
   const importJson = useAppStore((s) => s.importJson);
   const resetAll = useAppStore((s) => s.resetAll);
@@ -25,9 +23,6 @@ export function SettingsScreen() {
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
-  const [savingsOpen, setSavingsOpen] = useState(false);
-  const [savingsName, setSavingsName] = useState("");
-  const [savingsStart, setSavingsStart] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   function doExport() {
@@ -67,16 +62,6 @@ export function SettingsScreen() {
     } catch (err) {
       setImportError(err instanceof Error ? err.message : String(err));
     }
-  }
-
-  function addSavings() {
-    const trimmed = savingsName.trim();
-    if (!trimmed) return;
-    const start = parseMoneyInput(savingsStart) ?? 0;
-    addSavingsAccount({ name: trimmed, startingBalance: start });
-    setSavingsName("");
-    setSavingsStart("");
-    setSavingsOpen(false);
   }
 
   return (
@@ -160,32 +145,6 @@ export function SettingsScreen() {
         <p className="text-xs text-ink-muted mt-3">
           Conversions take effect from {monthLabel(month)} onwards. Use the month switcher to
           pick a different effective month.
-        </p>
-      </section>
-
-      <section className="card p-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-ink-soft">Savings accounts</h2>
-          <button
-            type="button"
-            className="btn-secondary text-xs px-3 py-1.5"
-            onClick={() => setSavingsOpen(true)}
-          >
-            + Account
-          </button>
-        </div>
-        {budget.savingsAccounts.length === 0 ? (
-          <p className="text-xs text-ink-muted mt-2">No accounts yet.</p>
-        ) : (
-          <ul className="mt-2 flex flex-col gap-2">
-            {budget.savingsAccounts.map((a) => (
-              <SavingsAccountRow key={a.id} accountId={a.id} name={a.name} startingBalance={a.startingBalance} month={month} />
-            ))}
-          </ul>
-        )}
-        <p className="text-xs text-ink-muted mt-3">
-          Enter the amount you put in (or took out, with −) for {monthLabel(month)}. Use the
-          month switcher to log other months.
         </p>
       </section>
 
@@ -281,108 +240,10 @@ export function SettingsScreen() {
         }
       >
         <p className="text-sm">
-          This deletes every category, transaction, budget, savings entry, and income on this
-          device.
+          This deletes every category, transaction, budget, and income on this device.
         </p>
       </Modal>
-
-      <Modal
-        open={savingsOpen}
-        onClose={() => setSavingsOpen(false)}
-        title="New savings account"
-        footer={
-          <>
-            <button type="button" className="btn-ghost" onClick={() => setSavingsOpen(false)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={addSavings}
-              disabled={!savingsName.trim()}
-            >
-              Add
-            </button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <label className="text-sm">
-            <span className="block text-ink-soft mb-1">Name</span>
-            <input
-              autoFocus
-              className="input-base"
-              value={savingsName}
-              onChange={(e) => setSavingsName(e.target.value)}
-              placeholder="e.g. Emergency fund"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="block text-ink-soft mb-1">Starting balance (optional)</span>
-            <input
-              className="input-base"
-              inputMode="decimal"
-              value={savingsStart}
-              onChange={(e) => setSavingsStart(e.target.value)}
-              placeholder="0"
-            />
-          </label>
-        </div>
-      </Modal>
     </div>
-  );
-}
-
-function SavingsAccountRow({
-  accountId,
-  name,
-  startingBalance,
-  month,
-}: {
-  accountId: string;
-  name: string;
-  startingBalance: number;
-  month: string;
-}) {
-  const entries = useAppStore((s) => s.budget.savingsEntries);
-  const setSavingsEntry = useAppStore((s) => s.setSavingsEntry);
-  const existing = entries.find((e) => e.accountId === accountId && e.month === month);
-  const [draft, setDraft] = useState<string>(existing ? String(existing.amount) : "");
-
-  useEffect(() => {
-    setDraft(existing ? String(existing.amount) : "");
-  }, [existing?.amount, accountId, month]);
-
-  function commit() {
-    const v = parseMoneyInput(draft);
-    if (v === null) {
-      setSavingsEntry(accountId, month, 0);
-    } else if (v !== (existing?.amount ?? 0)) {
-      setSavingsEntry(accountId, month, v);
-    }
-  }
-
-  return (
-    <li className="rounded-xl border border-surface-border p-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-semibold">{name}</span>
-        <span className="text-xs text-ink-muted">Starting {formatGBP(startingBalance)}</span>
-      </div>
-      <label className="mt-2 block text-xs text-ink-muted">
-        This month
-        <input
-          className="input-base !py-1.5 !px-2 text-sm mt-1"
-          inputMode="decimal"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          }}
-          placeholder="0.00"
-        />
-      </label>
-    </li>
   );
 }
 
