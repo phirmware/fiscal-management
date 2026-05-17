@@ -43,18 +43,19 @@ export function TransactionsScreen() {
   const monthTotal = list.reduce((s, t) => s + t.amount, 0);
 
   return (
-    <div className="flex flex-col gap-3">
-      <section className="card p-4">
-        <div className="flex items-baseline justify-between">
+    <div className="flex flex-col gap-4">
+      <section className="card p-5">
+        <div className="flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-ink-soft">Activity</h2>
-            <div className="text-xs text-ink-muted">
-              {list.length} entries · {formatGBP(monthTotal)} total · {monthLabel(month)}
+            <span className="section-eyebrow">Activity</span>
+            <div className="mt-1 text-display-md text-ink stat-num">{formatGBP(monthTotal)}</div>
+            <div className="text-[12px] text-ink-muted mt-1">
+              {list.length} {list.length === 1 ? "entry" : "entries"} in {monthLabel(month)}
             </div>
           </div>
           <button
             type="button"
-            className="btn-primary text-sm px-3 py-2"
+            className="btn-primary"
             onClick={() => {
               setEditing(null);
               setOpen(true);
@@ -67,7 +68,7 @@ export function TransactionsScreen() {
 
         {budget.categories.length > 0 && (
           <select
-            className="input-base mt-3"
+            className="input-base mt-4"
             value={filterCat}
             onChange={(e) => setFilterCat(e.target.value)}
           >
@@ -82,37 +83,43 @@ export function TransactionsScreen() {
       </section>
 
       {budget.categories.length === 0 ? (
-        <div className="card p-6 text-center">
-          <p className="text-sm text-ink-soft">Create a category first to start logging spend.</p>
+        <div className="card p-8 text-center">
+          <p className="text-[14px] text-ink-soft">Create a category first to start logging spend.</p>
         </div>
       ) : list.length === 0 ? (
-        <div className="card p-6 text-center">
-          <p className="text-sm text-ink-soft">Nothing logged this month yet.</p>
+        <div className="card p-8 text-center">
+          <p className="text-[14px] text-ink-soft">Nothing logged this month yet.</p>
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {list.map((t) => {
             const cat = categoriesById.get(t.categoryId);
+            const d = new Date(t.date);
+            const day = isNaN(d.getTime())
+              ? t.date
+              : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
             return (
               <li key={t.id}>
                 <button
                   type="button"
-                  className="card w-full text-left p-3 flex items-start justify-between gap-3 hover:bg-surface-sunken/40"
+                  className="card-interactive w-full text-left p-4 flex items-center justify-between gap-3"
                   onClick={() => {
                     setEditing(t);
                     setOpen(true);
                   }}
                 >
-                  <div className="min-w-0">
-                    <div className="text-sm font-semibold text-ink truncate">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
                       {cat?.name ?? "Unknown"}
                     </div>
-                    <div className="text-xs text-ink-muted">
-                      {t.date}
+                    <div className="text-[12px] text-ink-muted mt-0.5">
+                      {day}
                       {t.note ? ` · ${t.note}` : ""}
                     </div>
                   </div>
-                  <div className="font-semibold tabular-nums">{formatGBP(t.amount)}</div>
+                  <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
+                    {formatGBP(t.amount)}
+                  </div>
                 </button>
               </li>
             );
@@ -211,21 +218,30 @@ function TxnModal({
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Amount</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            className="input-base text-lg font-semibold"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            autoFocus
-          />
+      <div className="flex flex-col gap-4">
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Amount</span>
+          <div className="relative">
+            <span
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted
+                text-lg font-semibold pointer-events-none"
+              aria-hidden="true"
+            >
+              £
+            </span>
+            <input
+              type="text"
+              inputMode="decimal"
+              className="input-base !pl-7 text-xl font-semibold stat-num"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              autoFocus
+            />
+          </div>
         </label>
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Category</span>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Category</span>
           <select
             className="input-base"
             value={categoryId}
@@ -241,8 +257,8 @@ function TxnModal({
             ))}
           </select>
         </label>
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Date</span>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Date</span>
           <input
             type="date"
             className="input-base"
@@ -250,8 +266,10 @@ function TxnModal({
             onChange={(e) => setDate(e.target.value)}
           />
         </label>
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Note (optional)</span>
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">
+            Note <span className="text-ink-muted font-normal">(optional)</span>
+          </span>
           <input
             className="input-base"
             value={note}

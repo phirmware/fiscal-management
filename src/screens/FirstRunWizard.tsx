@@ -82,68 +82,102 @@ export function FirstRunWizard() {
   return (
     <div className="min-h-full bg-surface flex flex-col items-center pb-safe">
       <div className="w-full max-w-phone flex flex-col gap-4 p-4">
-        <header>
-          <h1 className="text-xl font-semibold">Welcome</h1>
-          <p className="text-sm text-ink-soft mt-1">
+        <header className="pt-2">
+          <h1 className="text-display-lg text-ink tracking-tight">Welcome</h1>
+          <p className="text-[14px] text-ink-soft mt-2 leading-relaxed">
             Two quick steps. Everything stays on this device — no account, no sync.
           </p>
         </header>
 
-        <section className="card p-4">
-          <h2 className="text-sm font-semibold text-ink-soft">1. Monthly net income</h2>
-          <p className="text-xs text-ink-muted mt-1">
+        <section className="card-hero p-5">
+          <div className="flex items-baseline gap-3">
+            <span
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-surface-sunken text-ink-soft
+                flex items-center justify-center text-[13px] font-semibold"
+            >
+              1
+            </span>
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink">
+              Monthly net income
+            </h2>
+          </div>
+          <p className="text-[12px] text-ink-muted mt-2 ml-10 leading-snug">
             After tax. We'll use this for the 50/30/20 starting point.
           </p>
-          <input
-            className="input-base mt-3 text-lg font-semibold"
-            inputMode="decimal"
-            value={incomeDraft}
-            onChange={(e) => setIncomeDraft(e.target.value)}
-            placeholder="e.g. 2500"
-            autoFocus
-          />
+          <div className="relative mt-3">
+            <span
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted
+                text-lg font-semibold pointer-events-none"
+              aria-hidden="true"
+            >
+              £
+            </span>
+            <input
+              className="input-base !pl-7 text-xl font-semibold stat-num"
+              inputMode="decimal"
+              value={incomeDraft}
+              onChange={(e) => setIncomeDraft(e.target.value)}
+              placeholder="2500"
+              autoFocus
+            />
+          </div>
           {income > 0 && (
-            <div className="mt-3 text-xs text-ink-soft grid grid-cols-3 gap-2">
-              <Tile label="Needs (50%)" value={formatGBP(benchmark.needs)} colour="text-group-needs" />
-              <Tile label="Wants (30%)" value={formatGBP(benchmark.wants)} colour="text-group-wants" />
-              <Tile label="Savings (20%)" value={formatGBP(benchmark.savings)} colour="text-group-savings" />
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <Tile label="Needs · 50%" value={formatGBP(benchmark.needs)} dot="bg-group-needs" />
+              <Tile label="Wants · 30%" value={formatGBP(benchmark.wants)} dot="bg-group-wants" />
+              <Tile
+                label="Savings · 20%"
+                value={formatGBP(benchmark.savings)}
+                dot="bg-group-savings"
+              />
             </div>
           )}
-          <p className="text-xs text-ink-muted mt-2">
+          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
             A rough benchmark — not pass/fail. Adjust to your reality.
           </p>
         </section>
 
-        <section className="card p-4">
-          <h2 className="text-sm font-semibold text-ink-soft">2. Starter categories</h2>
-          <p className="text-xs text-ink-muted mt-1">
-            Tick what fits. Budgets are pre-filled from a rough split of income; edit any to taste.
-            You can change all of this later.
+        <section className="card p-5">
+          <div className="flex items-baseline gap-3">
+            <span
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-surface-sunken text-ink-soft
+                flex items-center justify-center text-[13px] font-semibold"
+            >
+              2
+            </span>
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink">Starter categories</h2>
+          </div>
+          <p className="text-[12px] text-ink-muted mt-2 ml-10 leading-snug">
+            Tick what fits. Budgets prefilled from a rough split of income; edit to taste.
           </p>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-4 flex flex-col">
             {STARTERS.map((s) => {
               const ch = selection[s.name]!;
               const suggestion = suggestedAmount(s);
               return (
-                <li key={s.name} className="flex items-center gap-2">
+                <li
+                  key={s.name}
+                  className="flex items-center gap-3 py-2.5 border-b border-surface-border
+                    last:border-b-0"
+                >
                   <input
                     type="checkbox"
-                    className="tap"
+                    className="w-5 h-5 accent-current rounded"
                     checked={ch.selected}
                     onChange={() => toggle(s.name)}
                     aria-label={`Include ${s.name}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-ink">{s.name}</span>
+                    <div className="text-[14px] font-medium text-ink truncate">{s.name}</div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="pill bg-surface-sunken text-ink-muted">{s.type}</span>
-                      <span className="text-xs text-ink-muted">{s.group}</span>
+                      <span className="text-[11px] text-ink-muted">{s.group}</span>
                     </div>
                   </div>
                   <input
                     type="text"
                     inputMode="decimal"
-                    className="input-base !py-1 !px-2 text-sm w-24"
+                    className="input-base !py-1.5 !px-2 !text-[13px] font-semibold w-20 stat-num"
                     value={ch.amount}
                     onChange={(e) => setAmount(s.name, e.target.value)}
                     placeholder={suggestion > 0 ? String(suggestion) : "0"}
@@ -155,13 +189,13 @@ export function FirstRunWizard() {
           </ul>
         </section>
 
-        <div className="sticky bottom-0 pb-[env(safe-area-inset-bottom)] pt-2 bg-surface">
+        <div className="sticky bottom-0 pb-safe pt-3 -mx-4 px-4 scrim">
           <button type="button" className="btn-primary w-full" onClick={finish}>
             Get started — {monthLabel(month)}
           </button>
           <button
             type="button"
-            className="btn-ghost w-full mt-2 text-xs"
+            className="btn-ghost w-full mt-2 text-[12px]"
             onClick={completeOnboarding}
           >
             Skip and start empty
@@ -172,11 +206,14 @@ export function FirstRunWizard() {
   );
 }
 
-function Tile({ label, value, colour }: { label: string; value: string; colour: string }) {
+function Tile({ label, value, dot }: { label: string; value: string; dot: string }) {
   return (
-    <div className="rounded-lg bg-surface-sunken p-2">
-      <div className={`text-[10px] uppercase tracking-wide ${colour}`}>{label}</div>
-      <div className="font-semibold tabular-nums">{value}</div>
+    <div className="rounded-xl bg-surface-sunken p-2.5">
+      <div className="flex items-center gap-1.5">
+        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden="true" />
+        <span className="text-[10px] uppercase tracking-wider text-ink-muted">{label}</span>
+      </div>
+      <div className="mt-1 text-[13px] font-semibold stat-num text-ink">{value}</div>
     </div>
   );
 }

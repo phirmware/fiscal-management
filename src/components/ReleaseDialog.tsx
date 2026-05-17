@@ -13,6 +13,46 @@ interface Props {
 
 type Choice = "assign" | "leave";
 
+function ChoiceCard({
+  selected,
+  onSelect,
+  title,
+  hint,
+  children,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  hint: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <label
+      className={`block rounded-2xl border p-3.5 cursor-pointer transition
+        ${
+          selected
+            ? "border-ink bg-surface-sunken/40"
+            : "border-surface-border hover:border-ink-faint"
+        }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="radio"
+          name="release"
+          className="mt-1 accent-current"
+          checked={selected}
+          onChange={onSelect}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-semibold tracking-tight text-ink">{title}</div>
+          <p className="text-[12px] text-ink-muted mt-0.5 leading-snug">{hint}</p>
+          {selected && children}
+        </div>
+      </div>
+    </label>
+  );
+}
+
 export function ReleaseDialog({ entry, onClose }: Props) {
   const budget = useAppStore((s) => s.budget);
   const acks = useAppStore((s) => s.overspendAcks);
@@ -25,7 +65,6 @@ export function ReleaseDialog({ entry, onClose }: Props) {
     if (!entry) return [];
     const m = computeMonth(budget, entry.month);
     const rows = categoryRows(budget, m, acks, entry.month);
-    // All non-converted categories are valid recipients; we don't filter by available.
     return reallocationDonors(rows, entry.categoryId, Number.NEGATIVE_INFINITY);
   }, [entry, budget, acks]);
 
@@ -48,7 +87,9 @@ export function ReleaseDialog({ entry, onClose }: Props) {
     <Modal
       open={!!entry}
       onClose={onClose}
-      title={`${entry.categoryName}: ${positive ? "released" : "shortfall"} ${formatGBP(Math.abs(entry.amount))}`}
+      title={`${entry.categoryName}: ${positive ? "released" : "shortfall"} ${formatGBP(
+        Math.abs(entry.amount),
+      )}`}
       footer={
         <>
           <button type="button" className="btn-ghost" onClick={onClose}>
@@ -65,79 +106,52 @@ export function ReleaseDialog({ entry, onClose }: Props) {
         </>
       }
     >
-      <p className="text-xs text-ink-muted mb-3">
+      <p className="text-[12px] text-ink-muted mb-3 leading-snug">
         Converted from Pot to Limit. The previous month ended with{" "}
-        <span className="font-semibold">{formatGBP(Math.abs(entry.amount))}</span>{" "}
-        {positive ? "available — decide where it should go." : "in deficit — decide where to absorb it from."}
+        <span className="font-semibold text-ink">{formatGBP(Math.abs(entry.amount))}</span>{" "}
+        {positive
+          ? "available — decide where it should go."
+          : "in deficit — decide where to absorb it from."}
       </p>
 
-      <fieldset className="flex flex-col gap-3">
+      <fieldset className="flex flex-col gap-2.5">
         <legend className="sr-only">How to handle the released amount</legend>
 
-        <label
-          className={`block rounded-xl border p-3 cursor-pointer ${
-            choice === "assign" ? "border-ink bg-surface-sunken/60" : "border-surface-border"
-          }`}
+        <ChoiceCard
+          selected={choice === "assign"}
+          onSelect={() => setChoice("assign")}
+          title={positive ? "Add to another category" : "Cover from another category"}
+          hint={
+            positive
+              ? "Increase that category's budget this month by the released amount."
+              : "Reduce another category's budget this month to absorb the shortfall."
+          }
         >
-          <div className="flex items-start gap-3">
-            <input
-              type="radio"
-              name="release"
-              className="mt-1"
-              checked={choice === "assign"}
-              onChange={() => setChoice("assign")}
-            />
-            <div className="flex-1">
-              <div className="text-sm font-semibold">
-                {positive ? "Add to another category" : "Cover from another category"}
-              </div>
-              <p className="text-xs text-ink-muted">
-                {positive
-                  ? "Increase that category's budget this month by the released amount."
-                  : "Reduce another category's budget this month to absorb the shortfall."}
-              </p>
-              {choice === "assign" &&
-                (candidates.length > 0 ? (
-                  <select
-                    className="input-base mt-2"
-                    value={target}
-                    onChange={(e) => setRecipientId(e.target.value)}
-                  >
-                    {candidates.map((c) => (
-                      <option key={c.categoryId} value={c.categoryId}>
-                        {c.name} — currently {formatGBP(c.available)} available
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <p className="text-xs text-status-over mt-2">No other categories yet.</p>
+          <div className="mt-3">
+            {candidates.length > 0 ? (
+              <select
+                className="input-base"
+                value={target}
+                onChange={(e) => setRecipientId(e.target.value)}
+              >
+                {candidates.map((c) => (
+                  <option key={c.categoryId} value={c.categoryId}>
+                    {c.name} — currently {formatGBP(c.available)} available
+                  </option>
                 ))}
-            </div>
+              </select>
+            ) : (
+              <p className="text-[12px] text-status-over">No other categories yet.</p>
+            )}
           </div>
-        </label>
+        </ChoiceCard>
 
-        <label
-          className={`block rounded-xl border p-3 cursor-pointer ${
-            choice === "leave" ? "border-ink bg-surface-sunken/60" : "border-surface-border"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <input
-              type="radio"
-              name="release"
-              className="mt-1"
-              checked={choice === "leave"}
-              onChange={() => setChoice("leave")}
-            />
-            <div>
-              <div className="text-sm font-semibold">Leave it in unallocated</div>
-              <p className="text-xs text-ink-muted">
-                No budget change. The released amount stays in this month's "Not yet assigned"
-                and this prompt is dismissed.
-              </p>
-            </div>
-          </div>
-        </label>
+        <ChoiceCard
+          selected={choice === "leave"}
+          onSelect={() => setChoice("leave")}
+          title="Leave it in unallocated"
+          hint="No budget change. The released amount stays in this month's 'Not yet assigned' and this prompt is dismissed."
+        />
       </fieldset>
     </Modal>
   );

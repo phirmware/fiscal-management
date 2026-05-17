@@ -14,6 +14,46 @@ interface Props {
 
 type Choice = "reallocate" | "cover" | "accept";
 
+function ChoiceCard({
+  selected,
+  onSelect,
+  title,
+  hint,
+  children,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  hint: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <label
+      className={`block rounded-2xl border p-3.5 cursor-pointer transition
+        ${
+          selected
+            ? "border-ink bg-surface-sunken/40"
+            : "border-surface-border hover:border-ink-faint"
+        }`}
+    >
+      <div className="flex items-start gap-3">
+        <input
+          type="radio"
+          name="choice"
+          className="mt-1 accent-current"
+          checked={selected}
+          onChange={onSelect}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="text-[14px] font-semibold tracking-tight text-ink">{title}</div>
+          <p className="text-[12px] text-ink-muted mt-0.5 leading-snug">{hint}</p>
+          {selected && children}
+        </div>
+      </div>
+    </label>
+  );
+}
+
 export function ReallocationDialog({ row, month, onClose }: Props) {
   const budget = useAppStore((s) => s.budget);
   const acks = useAppStore((s) => s.overspendAcks);
@@ -69,98 +109,49 @@ export function ReallocationDialog({ row, month, onClose }: Props) {
         </>
       }
     >
-      <fieldset className="flex flex-col gap-3">
+      <fieldset className="flex flex-col gap-2.5">
         <legend className="sr-only">Choose how to resolve the overspend</legend>
 
-        <label
-          className={`block rounded-xl border p-3 cursor-pointer ${
-            choice === "reallocate"
-              ? "border-ink bg-surface-sunken/60"
-              : "border-surface-border"
-          }`}
+        <ChoiceCard
+          selected={choice === "reallocate"}
+          onSelect={() => setChoice("reallocate")}
+          title="Reallocate from another category"
+          hint="Preferred. Total budgeted stays the same."
         >
-          <div className="flex items-start gap-3">
-            <input
-              type="radio"
-              name="choice"
-              className="mt-1"
-              checked={choice === "reallocate"}
-              onChange={() => setChoice("reallocate")}
-            />
-            <div className="flex-1">
-              <div className="text-sm font-semibold">Reallocate from another category</div>
-              <p className="text-xs text-ink-muted">
-                Preferred. Total budgeted stays the same.
+          <div className="mt-3">
+            {canReallocate ? (
+              <select
+                className="input-base"
+                value={effectiveDonor}
+                onChange={(e) => setDonorId(e.target.value)}
+              >
+                {donors.map((d) => (
+                  <option key={d.categoryId} value={d.categoryId}>
+                    {d.name} — {formatGBP(d.available)} available
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-[12px] text-status-over">
+                No category has {formatGBP(row.amount)} spare this month.
               </p>
-              {choice === "reallocate" && (
-                <div className="mt-2">
-                  {canReallocate ? (
-                    <select
-                      className="input-base"
-                      value={effectiveDonor}
-                      onChange={(e) => setDonorId(e.target.value)}
-                    >
-                      {donors.map((d) => (
-                        <option key={d.categoryId} value={d.categoryId}>
-                          {d.name} — {formatGBP(d.available)} available
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <p className="text-xs text-status-over">
-                      No category has {formatGBP(row.amount)} spare this month.
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
           </div>
-        </label>
+        </ChoiceCard>
 
-        <label
-          className={`block rounded-xl border p-3 cursor-pointer ${
-            choice === "cover" ? "border-ink bg-surface-sunken/60" : "border-surface-border"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <input
-              type="radio"
-              name="choice"
-              className="mt-1"
-              checked={choice === "cover"}
-              onChange={() => setChoice("cover")}
-            />
-            <div>
-              <div className="text-sm font-semibold">Cover from unallocated</div>
-              <p className="text-xs text-ink-muted">
-                Adds {formatGBP(row.amount)} to {row.name}'s budget this month, reducing
-                unallocated by the same.
-              </p>
-            </div>
-          </div>
-        </label>
+        <ChoiceCard
+          selected={choice === "cover"}
+          onSelect={() => setChoice("cover")}
+          title="Cover from unallocated"
+          hint={`Adds ${formatGBP(row.amount)} to ${row.name}'s budget this month, reducing unallocated by the same.`}
+        />
 
-        <label
-          className={`block rounded-xl border p-3 cursor-pointer ${
-            choice === "accept" ? "border-ink bg-surface-sunken/60" : "border-surface-border"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <input
-              type="radio"
-              name="choice"
-              className="mt-1"
-              checked={choice === "accept"}
-              onChange={() => setChoice("accept")}
-            />
-            <div>
-              <div className="text-sm font-semibold">Accept the overspend</div>
-              <p className="text-xs text-ink-muted">
-                The negative balance stays visible in history. Only this prompt is dismissed.
-              </p>
-            </div>
-          </div>
-        </label>
+        <ChoiceCard
+          selected={choice === "accept"}
+          onSelect={() => setChoice("accept")}
+          title="Accept the overspend"
+          hint="The negative balance stays visible in history. Only this prompt is dismissed."
+        />
       </fieldset>
     </Modal>
   );

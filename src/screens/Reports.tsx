@@ -107,45 +107,50 @@ export function ReportsScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="card p-4 print:hidden">
-        <h2 className="text-sm font-semibold text-ink-soft">Report range</h2>
-        <div className="mt-2 grid grid-cols-4 gap-2">
-          {([1, 3, 6, 12] as const).map((n) => (
-            <button
-              key={n}
-              type="button"
-              className={`btn text-sm py-2 px-0 ${
-                span === n ? "bg-ink text-surface" : "bg-surface-sunken text-ink-soft"
-              }`}
-              onClick={() => setSpan(n)}
-            >
-              {n === 1 ? "1 mo" : `${n} mo`}
-            </button>
-          ))}
+      <section className="card p-5 print:hidden">
+        <span className="section-eyebrow">Report range</span>
+        <div className="mt-3 grid grid-cols-4 gap-1 p-1 rounded-xl bg-surface-sunken">
+          {([1, 3, 6, 12] as const).map((n) => {
+            const active = span === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                className={`text-[13px] font-semibold py-2 rounded-lg transition ${
+                  active
+                    ? "bg-surface-card text-ink shadow-sm"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+                onClick={() => setSpan(n)}
+              >
+                {n === 1 ? "1 mo" : `${n} mo`}
+              </button>
+            );
+          })}
         </div>
-        <p className="text-xs text-ink-muted mt-2">
+        <p className="text-[12px] text-ink-muted mt-3">
           {monthLabel(fromMonth)} – {monthLabel(month)} · {summary.monthCount} month
           {summary.monthCount === 1 ? "" : "s"} · {txnCount} transactions
         </p>
       </section>
 
-      <section className="card p-4 print:hidden">
-        <h2 className="text-sm font-semibold text-ink-soft">Export</h2>
+      <section className="card p-5 print:hidden">
+        <span className="section-eyebrow">Export</span>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <button type="button" className="btn-secondary text-sm" onClick={exportTransactionsCsv}>
+          <button type="button" className="btn-secondary" onClick={exportTransactionsCsv}>
             Transactions CSV
           </button>
-          <button type="button" className="btn-secondary text-sm" onClick={exportSummaryCsv}>
+          <button type="button" className="btn-secondary" onClick={exportSummaryCsv}>
             Monthly summary CSV
           </button>
-          <button type="button" className="btn-secondary text-sm" onClick={exportCategoriesCsv}>
+          <button type="button" className="btn-secondary" onClick={exportCategoriesCsv}>
             Category breakdown CSV
           </button>
-          <button type="button" className="btn-primary text-sm" onClick={printStatement}>
+          <button type="button" className="btn-primary" onClick={printStatement}>
             Print / Save as PDF
           </button>
         </div>
-        <p className="text-xs text-ink-muted mt-2">
+        <p className="text-[12px] text-ink-muted mt-2 leading-snug">
           "Save as PDF" uses your browser's print dialog — the statement below is what gets printed.
         </p>
       </section>

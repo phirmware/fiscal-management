@@ -12,10 +12,10 @@ const STATUS_TAG_CLASSES: Record<string, string> = {
   empty: "bg-surface-sunken text-ink-muted",
 };
 
-const GROUP_CLASSES: Record<string, string> = {
-  Needs: "bg-group-needs/10 text-group-needs",
-  Wants: "bg-group-wants/10 text-group-wants",
-  Savings: "bg-group-savings/10 text-group-savings",
+const GROUP_DOT: Record<string, string> = {
+  Needs: "bg-group-needs",
+  Wants: "bg-group-wants",
+  Savings: "bg-group-savings",
 };
 
 interface Props {
@@ -43,15 +43,25 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
   }
 
   const reference = row.type === "Pot" ? row.budgeted + row.carryIn : row.budgeted;
+  const statusLabel =
+    row.status === "over" ? "Over" : row.status === "close" ? "Close" : row.status === "ok" ? "On track" : "—";
 
   return (
-    <div className="card p-3 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold text-ink truncate">{row.name}</h3>
-            <span className={`pill ${GROUP_CLASSES[row.group] ?? ""}`}>{row.group}</span>
+    <div className="card p-4 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${GROUP_DOT[row.group] ?? ""}`}
+              aria-hidden="true"
+            />
+            <h3 className="text-[15px] font-semibold tracking-tight text-ink truncate">
+              {row.name}
+            </h3>
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
             <span className="pill bg-surface-sunken text-ink-muted">{row.type}</span>
+            <span className="pill bg-surface-sunken text-ink-muted">{row.group}</span>
             {row.type === "Pot" && row.carryIn !== 0 && (
               <span
                 className={`pill ${
@@ -68,24 +78,22 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
             {isPrefilled && row.budgeted > 0 && (
               <span
                 className="pill bg-status-infoSoft text-status-info"
-                title={`Prefilled from ${monthLabel(row.prefillSourceMonth!)} — tap the budget to confirm or change it.`}
+                title={`Prefilled from ${monthLabel(row.prefillSourceMonth!)}`}
               >
                 from {monthLabel(row.prefillSourceMonth!)}
               </span>
             )}
           </div>
         </div>
-        <div className={`pill ${STATUS_TAG_CLASSES[row.status] ?? ""}`}>
-          {row.status === "over" ? "Over" : row.status === "close" ? "Close" : "OK"}
-        </div>
+        <span className={`pill-lg ${STATUS_TAG_CLASSES[row.status] ?? ""}`}>{statusLabel}</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-3 gap-3">
         <div>
-          <div className="text-ink-muted">Budgeted</div>
+          <div className="section-eyebrow">Budgeted</div>
           {editing ? (
             <input
-              className="input-base !py-1 !px-2 text-sm w-full"
+              className="input-base !py-1.5 !px-2 !text-[15px] !font-semibold mt-1 w-full"
               type="text"
               inputMode="decimal"
               autoFocus
@@ -100,7 +108,8 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           ) : row.budgeted === 0 ? (
             <button
               type="button"
-              className="tap text-status-info font-semibold underline underline-offset-2"
+              className="mt-1 text-[15px] font-semibold text-status-info hover:underline
+                underline-offset-2 focus-ring rounded"
               onClick={startEdit}
             >
               Set budget
@@ -108,11 +117,12 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           ) : (
             <button
               type="button"
-              className={`tap font-semibold border-b border-dashed ${
-                isPrefilled
-                  ? "text-ink-soft border-status-info/50 italic"
-                  : "text-ink border-ink-faint"
-              }`}
+              className={`mt-1 text-[15px] font-semibold stat-num border-b border-dashed
+                focus-ring rounded ${
+                  isPrefilled
+                    ? "text-ink-soft border-status-info/50 italic"
+                    : "text-ink border-ink-faint"
+                }`}
               onClick={startEdit}
             >
               {formatGBP(row.budgeted)}
@@ -120,13 +130,15 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           )}
         </div>
         <div>
-          <div className="text-ink-muted">Spent</div>
-          <div className="font-semibold">{formatGBP(row.spent)}</div>
+          <div className="section-eyebrow">Spent</div>
+          <div className="mt-1 text-[15px] font-semibold stat-num text-ink">
+            {formatGBP(row.spent)}
+          </div>
         </div>
         <div>
-          <div className="text-ink-muted">Available</div>
+          <div className="section-eyebrow">Available</div>
           <div
-            className={`font-semibold ${
+            className={`mt-1 text-[15px] font-semibold stat-num ${
               row.available < 0 ? "text-status-over" : "text-ink"
             } ${isPrefilled ? "italic text-ink-soft" : ""}`}
           >
@@ -139,24 +151,20 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
       <ProgressBar used={row.spent} total={reference} status={row.status} />
 
       {isPrefilled && row.budgeted > 0 && (
-        <p className="text-xs text-ink-muted">
+        <p className="text-[11px] text-ink-muted">
           Showing last month's budget. Tap to confirm or change for {monthLabel(month)}.
         </p>
       )}
 
       {row.available < 0 && (
-        <div className="flex items-center justify-between gap-2 mt-1">
-          <span className="text-xs text-status-over">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] text-status-over font-medium">
             {row.acknowledged
               ? "Overspend accepted."
               : `Over by ${formatGBP(-row.available)}.`}
           </span>
           {!row.acknowledged && onResolveOverspend && (
-            <button
-              type="button"
-              className="btn-secondary text-xs px-3 py-1"
-              onClick={onResolveOverspend}
-            >
+            <button type="button" className="btn-secondary btn-sm" onClick={onResolveOverspend}>
               Resolve
             </button>
           )}

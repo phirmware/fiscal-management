@@ -2,40 +2,80 @@ import { useAppStore } from "../app/store.js";
 import { monthLabel, nextMonth, prevMonth } from "../app/utils/month.js";
 import { currentMonth } from "../app/state.js";
 
+function ChevronLeft({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        d="M15 6l-6 6 6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronRight({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        d="M9 6l6 6-6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function MonthSwitcher() {
   const month = useAppStore((s) => s.ui.selectedMonth);
   const setSelectedMonth = useAppStore((s) => s.setSelectedMonth);
   const isCurrent = month === currentMonth();
+  const label = monthLabel(month);
+  const [monthName, year] = label.split(" ");
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between gap-2">
       <button
         type="button"
-        className="tap p-2 rounded-xl hover:bg-surface-sunken text-ink-muted"
+        className="btn-icon"
         onClick={() => setSelectedMonth(prevMonth(month))}
         aria-label="Previous month"
       >
-        ‹
+        <ChevronLeft className="w-5 h-5" />
       </button>
-      <div className="flex flex-col items-center">
-        <span className="text-base font-semibold">{monthLabel(month)}</span>
-        {!isCurrent && (
+      <div className="flex flex-col items-center min-w-0">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-lg font-semibold tracking-tight text-ink">{monthName}</span>
+          <span className="text-sm font-medium text-ink-muted tabular-nums">{year}</span>
+        </div>
+        {!isCurrent ? (
           <button
             type="button"
             onClick={() => setSelectedMonth(currentMonth())}
-            className="text-xs text-status-info underline-offset-2 hover:underline"
+            className="text-[11px] font-medium text-status-info hover:underline underline-offset-2
+              tracking-tight mt-0.5"
           >
             Jump to current
           </button>
+        ) : (
+          <span className="text-[11px] font-medium text-ink-muted tracking-wider uppercase mt-0.5">
+            This month
+          </span>
         )}
       </div>
       <button
         type="button"
-        className="tap p-2 rounded-xl hover:bg-surface-sunken text-ink-muted"
+        className="btn-icon"
         onClick={() => setSelectedMonth(nextMonth(month))}
         aria-label="Next month"
       >
-        ›
+        <ChevronRight className="w-5 h-5" />
       </button>
     </div>
   );

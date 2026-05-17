@@ -103,25 +103,29 @@ export function HomeScreen() {
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
-      <section className="card p-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-ink-soft">50/30/20 comparison</h2>
+      <section className="card p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <span className="section-eyebrow">50 / 30 / 20</span>
+            <h2 className="text-[15px] font-semibold tracking-tight text-ink mt-0.5">
+              How this month splits
+            </h2>
+          </div>
           <button
             type="button"
             onClick={() => {
               setDraftIncome(String(monthSummary.income || ""));
               setIncomeOpen(true);
             }}
-            className="text-xs text-status-info underline-offset-2 hover:underline"
+            className="text-[12px] font-medium text-status-info hover:underline underline-offset-2"
           >
             Edit income
           </button>
         </div>
-        <p className="text-xs text-ink-muted mt-1">
-          A rough benchmark — useful as context, not pass/fail. Cost of living and higher
-          incomes shift these targets.
+        <p className="text-[12px] text-ink-muted mt-1 leading-snug">
+          A rough benchmark — not pass/fail. Cost of living and income level shift these.
         </p>
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-3.5">
           <GroupComparisonRow
             label="Needs"
             actual={totals.needs}
@@ -143,24 +147,24 @@ export function HomeScreen() {
         </div>
       </section>
 
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">Savings</h2>
-        <div className="mt-2 flex items-baseline justify-between">
+      <section className="card p-5">
+        <span className="section-eyebrow">Savings</span>
+        <div className="mt-2 flex items-end justify-between gap-3">
           <div>
-            <div className="text-xs text-ink-muted">This month</div>
-            <div className="text-lg font-semibold tabular-nums">
+            <div className="text-[11px] text-ink-muted uppercase tracking-wider">This month</div>
+            <div className="text-display-md text-ink stat-num mt-1">
               {formatGBP(savedThisMonth)}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-ink-muted">Cumulative</div>
-            <div className="text-lg font-semibold tabular-nums">
+            <div className="text-[11px] text-ink-muted uppercase tracking-wider">Cumulative</div>
+            <div className="text-display-md text-ink stat-num mt-1">
               {formatGBP(savedCumulative)}
             </div>
           </div>
         </div>
         {!hasSavingsCategories && (
-          <p className="text-xs text-ink-muted mt-2">
+          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
             No Savings categories yet. Add one from Budget → + Category and tag it Savings.
           </p>
         )}
@@ -181,21 +185,20 @@ export function HomeScreen() {
           </>
         }
       >
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Net (after-tax) income</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            className="input-base"
-            value={draftIncome}
-            onChange={(e) => setDraftIncome(e.target.value)}
-            placeholder="e.g. 2500"
-            autoFocus
-          />
+        <label className="block text-[13px] font-medium text-ink-soft mb-2">
+          Net (after-tax) income
         </label>
-        <p className="text-xs text-ink-muted mt-2">
-          Applies only to this month. Set per-month so a raise or a side-hustle change flows
-          through correctly.
+        <input
+          type="text"
+          inputMode="decimal"
+          className="input-base text-lg font-semibold stat-num"
+          value={draftIncome}
+          onChange={(e) => setDraftIncome(e.target.value)}
+          placeholder="e.g. 2500"
+          autoFocus
+        />
+        <p className="text-[12px] text-ink-muted mt-2 leading-snug">
+          Applies only to this month. Set per-month so a raise or side-hustle flows through.
         </p>
       </Modal>
     </div>

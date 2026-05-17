@@ -53,47 +53,44 @@ export function BudgetScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="card p-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-ink-soft">Month at a glance</h2>
-          <button type="button" className="btn-secondary text-xs px-3 py-1.5" onClick={() => setAddOpen(true)}>
+      <section className="card p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="section-eyebrow">Month at a glance</span>
+          <button type="button" className="btn-secondary btn-sm" onClick={() => setAddOpen(true)}>
             + Category
           </button>
         </div>
-        <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-          <div>
-            <div className="text-ink-muted">Budgeted</div>
-            <div className="font-semibold tabular-nums">{formatGBP(monthSummary.totalBudgeted)}</div>
-          </div>
-          <div>
-            <div className="text-ink-muted">Spent</div>
-            <div className="font-semibold tabular-nums">{formatGBP(monthSummary.totalSpent)}</div>
-          </div>
-          <div>
-            <div className="text-ink-muted">Unallocated</div>
-            <div className="font-semibold tabular-nums">{formatGBP(monthSummary.unallocated)}</div>
-          </div>
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <Stat label="Budgeted" value={monthSummary.totalBudgeted} />
+          <Stat label="Spent" value={monthSummary.totalSpent} />
+          <Stat label="Unallocated" value={monthSummary.unallocated} />
         </div>
       </section>
 
       {releases.length > 0 && (
-        <section className="rounded-2xl border border-status-info/30 bg-status-infoSoft/60 p-4">
-          <h2 className="text-sm font-semibold text-ink">
+        <section className="rounded-2xl border border-status-info/30 bg-status-infoSoft/40 p-4">
+          <h2 className="text-[14px] font-semibold text-ink tracking-tight">
             {releases.length === 1
               ? `${releases[0]!.categoryName}: ${formatGBP(Math.abs(releases[0]!.amount))} released from Pot→Limit conversion.`
-              : `${releases.length} categories converted from Pot to Limit — released amounts need a home.`}
+              : `${releases.length} categories converted — released amounts need a home.`}
           </h2>
-          <p className="text-xs text-ink-soft mt-1">
-            The accumulated Pot balance from last month is no longer earmarked. Assign it to
-            another category for this month, or leave it in unallocated.
+          <p className="text-[12px] text-ink-soft mt-1 leading-snug">
+            The accumulated Pot balance from last month is no longer earmarked. Assign it
+            elsewhere or leave it in unallocated.
           </p>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-1.5">
             {releases.map((r) => (
-              <li key={r.categoryId} className="flex items-center justify-between gap-2">
-                <div className="text-sm">
+              <li
+                key={r.categoryId}
+                className="flex items-center justify-between gap-2 rounded-xl bg-surface-card/50
+                  border border-status-info/15 px-3 py-2"
+              >
+                <div className="text-[13px] min-w-0">
                   <span className="font-medium text-ink">{r.categoryName}</span>
                   <span
-                    className={`ml-2 font-semibold ${r.amount < 0 ? "text-status-over" : "text-status-info"}`}
+                    className={`ml-2 stat-num font-semibold ${
+                      r.amount < 0 ? "text-status-over" : "text-status-info"
+                    }`}
                   >
                     {r.amount < 0 ? "−" : "+"}
                     {formatGBP(Math.abs(r.amount))}
@@ -102,7 +99,7 @@ export function BudgetScreen() {
                 <button
                   type="button"
                   onClick={() => setReleaseFor(r)}
-                  className="btn-secondary text-xs px-3 py-1.5"
+                  className="btn-secondary btn-sm"
                 >
                   Handle
                 </button>
@@ -116,10 +113,8 @@ export function BudgetScreen() {
 
       {(["Needs", "Wants", "Savings"] as const).map((g) =>
         byGroup[g].length === 0 ? null : (
-          <section key={g} className="flex flex-col gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-muted px-1">
-              {g}
-            </h3>
+          <section key={g} className="flex flex-col gap-2.5">
+            <h3 className="section-eyebrow px-1">{g}</h3>
             {byGroup[g].map((row) => (
               <CategoryRow
                 key={row.categoryId}
@@ -133,9 +128,9 @@ export function BudgetScreen() {
       )}
 
       {rows.length === 0 && (
-        <div className="card p-6 text-center">
-          <p className="text-sm text-ink-soft">No categories for this month yet.</p>
-          <button type="button" className="btn-primary mt-3" onClick={() => setAddOpen(true)}>
+        <div className="card p-8 text-center">
+          <p className="text-[14px] text-ink-soft">No categories for this month yet.</p>
+          <button type="button" className="btn-primary mt-4" onClick={() => setAddOpen(true)}>
             Add your first category
           </button>
         </div>
@@ -156,6 +151,22 @@ export function BudgetScreen() {
           setAddOpen(false);
         }}
       />
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="section-eyebrow">{label}</div>
+      <div
+        className={`mt-1 text-[15px] font-semibold stat-num ${
+          value < 0 ? "text-status-over" : "text-ink"
+        }`}
+      >
+        {value < 0 ? "−" : ""}
+        {formatGBP(Math.abs(value))}
+      </div>
     </div>
   );
 }
@@ -222,9 +233,9 @@ function AddCategoryModal({
         </>
       }
     >
-      <div className="flex flex-col gap-3">
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Name</span>
+      <div className="flex flex-col gap-4">
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Name</span>
           <input
             className="input-base"
             value={name}
@@ -234,80 +245,106 @@ function AddCategoryModal({
           />
         </label>
 
-        <div className="grid grid-cols-3 gap-2">
-          {(["Needs", "Wants", "Savings"] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              className={`btn ${
-                group === g ? "bg-ink text-surface" : "bg-surface-sunken text-ink"
-              } px-0`}
-              onClick={() => setGroup(g)}
-            >
-              {g}
-            </button>
-          ))}
+        <div>
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Group</span>
+          <Segmented
+            value={group}
+            options={["Needs", "Wants", "Savings"]}
+            onChange={(v) => setGroup(v as Group)}
+          />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          {(["Limit", "Pot"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={`btn ${
-                type === t ? "bg-ink text-surface" : "bg-surface-sunken text-ink"
-              }`}
-              onClick={() => setType(t)}
-            >
-              {t}
-            </button>
-          ))}
+        <div>
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Type</span>
+          <Segmented
+            value={type}
+            options={["Limit", "Pot"]}
+            onChange={(v) => setType(v as CategoryType)}
+          />
+          <p className="text-[12px] text-ink-muted mt-2 leading-snug">
+            {type === "Limit"
+              ? "Resets every month — for monthly spending ceilings like groceries."
+              : "Accumulates over time — for irregular costs like gifts or car maintenance."}
+          </p>
         </div>
-        <p className="text-xs text-ink-muted">
-          {type === "Limit"
-            ? "Resets every month — for monthly spending ceilings like groceries."
-            : "Accumulates over time — for irregular costs like gifts or car maintenance."}
-        </p>
 
-        <label className="text-sm">
-          <span className="block text-ink-soft mb-1">
-            Budget for {monthLabel(defaultMonth)} (optional)
+        <label className="block">
+          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">
+            Budget for {monthLabel(defaultMonth)}{" "}
+            <span className="text-ink-muted font-normal">(optional)</span>
           </span>
           <input
-            className="input-base"
+            className="input-base stat-num"
             inputMode="decimal"
             value={monthlyBudget}
             onChange={(e) => setMonthlyBudget(e.target.value)}
             placeholder="0.00"
           />
-          <p className="text-xs text-ink-muted mt-1">
-            You can change this any time by tapping the budgeted amount on the category row.
+          <p className="text-[12px] text-ink-muted mt-1.5 leading-snug">
+            Change any time by tapping the budgeted amount on the category row.
           </p>
         </label>
 
         <button
           type="button"
-          className="text-xs text-status-info underline-offset-2 hover:underline self-start"
+          className="text-[12px] font-medium text-status-info hover:underline underline-offset-2 self-start"
           onClick={() => setAdvanced((v) => !v)}
         >
-          {advanced ? "Hide advanced" : "Advanced"}
+          {advanced ? "Hide advanced" : "Advanced ↓"}
         </button>
         {advanced && (
-          <label className="text-sm">
-            <span className="block text-ink-soft mb-1">Annual target (optional)</span>
+          <label className="block">
+            <span className="block text-[13px] font-medium text-ink-soft mb-1.5">
+              Annual target <span className="text-ink-muted font-normal">(optional)</span>
+            </span>
             <input
-              className="input-base"
+              className="input-base stat-num"
               inputMode="decimal"
               value={annualTarget}
               onChange={(e) => setAnnualTarget(e.target.value)}
               placeholder="e.g. 1200"
             />
-            <p className="text-xs text-ink-muted mt-1">
+            <p className="text-[12px] text-ink-muted mt-1.5 leading-snug">
               Useful for sinking-fund Pots — stored only, not yet used in calculations.
             </p>
           </label>
         )}
       </div>
     </Modal>
+  );
+}
+
+function Segmented({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: readonly string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div
+      className="grid gap-1 p-1 rounded-xl bg-surface-sunken"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      role="radiogroup"
+    >
+      {options.map((opt) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(opt)}
+            className={`text-[13px] font-semibold py-1.5 rounded-lg transition
+              ${active ? "bg-surface-card text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
   );
 }

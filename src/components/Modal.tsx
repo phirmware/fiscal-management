@@ -9,6 +9,21 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        d="M6 6l12 12M18 6L6 18"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -16,38 +31,51 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       if (e.key === "Escape") onClose();
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [open, onClose]);
 
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/30"
+      className="modal-backdrop-enter fixed inset-0 z-50 flex items-end sm:items-center
+        justify-center bg-ink/40 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div
-        className="w-full max-w-phone bg-surface-card rounded-t-2xl sm:rounded-2xl border border-surface-border
-          flex flex-col max-h-[90vh]"
+        className="modal-enter w-full max-w-phone bg-surface-card rounded-t-3xl sm:rounded-3xl
+          border border-surface-border flex flex-col max-h-[92vh]"
+        style={{ boxShadow: "var(--shadow-pop)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{title}</h2>
+        <div className="hidden sm:block" />
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <span className="w-9 h-1 rounded-full bg-surface-border" aria-hidden="true" />
+        </div>
+        <div className="px-5 pt-3 pb-2 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
           <button
             type="button"
-            className="tap p-1 rounded-lg text-ink-muted hover:bg-surface-sunken"
+            className="btn-icon -mr-2"
             onClick={onClose}
             aria-label="Close"
           >
-            ✕
+            <CloseIcon className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-4 pb-4 overflow-y-auto">{children}</div>
+        <div className="px-5 pb-5 overflow-y-auto">{children}</div>
         {footer && (
-          <div className="px-4 py-3 border-t border-surface-border flex gap-2 justify-end">
+          <div
+            className="px-5 py-3 border-t border-surface-border bg-surface-card
+              flex gap-2 justify-end rounded-b-3xl"
+          >
             {footer}
           </div>
         )}

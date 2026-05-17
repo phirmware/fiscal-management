@@ -54,62 +54,70 @@ export function SavingsScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">{monthLabel(month)} savings</h2>
-        <div className="mt-2 flex items-baseline justify-between">
+      <section className="card-hero p-5">
+        <span className="section-eyebrow">{monthLabel(month)} savings</span>
+        <div className="mt-2 flex items-end justify-between gap-3">
           <div>
-            <div className="text-xs text-ink-muted">This month</div>
-            <div className="text-lg font-semibold tabular-nums">{formatGBP(monthNet)}</div>
+            <div className="text-[11px] text-ink-muted uppercase tracking-wider">This month</div>
+            <div className="text-display-md text-ink stat-num mt-1">{formatGBP(monthNet)}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-ink-muted">Cumulative</div>
-            <div className="text-lg font-semibold tabular-nums">{formatGBP(cumulative)}</div>
+            <div className="text-[11px] text-ink-muted uppercase tracking-wider">Cumulative</div>
+            <div className="text-display-md text-ink stat-num mt-1">{formatGBP(cumulative)}</div>
           </div>
         </div>
-        <p className="text-xs text-ink-muted mt-2">
-          Per Savings category, we count whichever is larger — the budget you set or the
-          activities you logged — so it works whether you treat the budget as the deposit or
-          log transactions as deposits. Cumulative sums this across all months.
+        <p className="text-[12px] text-ink-muted mt-3 leading-snug">
+          Per Savings category we count whichever is larger — the budget you set or the
+          activities you logged. Cumulative sums this across all months.
         </p>
       </section>
 
-      <section className="card p-4">
+      <section className="card p-5">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-ink-soft">Savings categories</h2>
+          <span className="section-eyebrow">Savings categories</span>
           <button
             type="button"
-            className="text-xs text-status-info underline-offset-2 hover:underline"
+            className="text-[12px] font-medium text-status-info hover:underline underline-offset-2"
             onClick={() => setSelectedScreen("budget")}
           >
             Manage on Budget →
           </button>
         </div>
         {rowsForCategories.length === 0 ? (
-          <p className="text-xs text-ink-muted mt-2">
+          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
             No Savings-tagged categories yet. Add one via Budget → + Category, set the group
             to Savings, and pick Pot if you want the balance to roll over.
           </p>
         ) : (
-          <ul className="mt-2 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-2">
             {rowsForCategories.map((r) => (
-              <li key={r.id} className="rounded-xl border border-surface-border p-3">
+              <li
+                key={r.id}
+                className="rounded-2xl border border-surface-border bg-surface-card p-4"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold">{r.name}</span>
+                  <span className="text-[15px] font-semibold tracking-tight text-ink">
+                    {r.name}
+                  </span>
                   <span className="pill bg-surface-sunken text-ink-muted">{r.type}</span>
                 </div>
-                <div className="mt-2 grid grid-cols-4 gap-2 text-xs">
+                <div className="mt-3 grid grid-cols-4 gap-3">
                   <Stat label="Budgeted" value={r.budgeted} />
                   <Stat label="Activities" value={r.spent} />
-                  <Stat label="Counted" value={Math.max(r.budgeted, r.spent)} />
+                  <Stat label="Counted" value={Math.max(r.budgeted, r.spent)} highlight />
                   <Stat
                     label={r.type === "Pot" ? "Pot balance" : "Remaining"}
                     value={r.available}
                   />
                 </div>
                 {r.type === "Pot" && r.carryIn !== 0 && (
-                  <p className="text-xs text-ink-muted mt-1">
+                  <p className="text-[12px] text-ink-muted mt-3">
                     Carried in from last month:{" "}
-                    <span className={r.carryIn >= 0 ? "text-status-ok" : "text-status-over"}>
+                    <span
+                      className={
+                        r.carryIn >= 0 ? "text-status-ok font-medium" : "text-status-over font-medium"
+                      }
+                    >
                       {r.carryIn >= 0 ? "+" : "−"}
                       {formatGBP(Math.abs(r.carryIn))}
                     </span>
@@ -121,46 +129,61 @@ export function SavingsScreen() {
         )}
       </section>
 
-      <section className="card p-4">
+      <section className="card p-5">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="text-sm font-semibold text-ink-soft">
-            Trend ({monthLabel(trendFrom)} – {monthLabel(month)})
-          </h2>
-          <div className="flex gap-1">
-            {([6, 12, 24] as const).map((n) => (
-              <button
-                key={n}
-                type="button"
-                className={`text-xs px-2 py-1 rounded-lg ${
-                  trendRange === n
-                    ? "bg-ink text-surface font-semibold"
-                    : "bg-surface-sunken text-ink-muted"
-                }`}
-                onClick={() => setTrendRange(n)}
-              >
-                {n}m
-              </button>
-            ))}
+          <div>
+            <span className="section-eyebrow">Trend</span>
+            <div className="text-[13px] text-ink-soft mt-0.5">
+              {monthLabel(trendFrom)} – {monthLabel(month)}
+            </div>
+          </div>
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-sunken">
+            {([6, 12, 24] as const).map((n) => {
+              const active = trendRange === n;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  className={`text-[12px] px-2.5 py-1 rounded-lg transition font-semibold ${
+                    active
+                      ? "bg-surface-card text-ink shadow-sm"
+                      : "text-ink-muted hover:text-ink"
+                  }`}
+                  onClick={() => setTrendRange(n)}
+                >
+                  {n}m
+                </button>
+              );
+            })}
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-4">
           <SavingsTrendChart points={trend} />
         </div>
-        <p className="text-xs text-ink-muted mt-2">
-          Bars: amount counted per month — the larger of your budget or your logged activities
-          for each Savings category. The line tracks cumulative savings across all months.
+        <p className="text-[12px] text-ink-muted mt-2 leading-snug">
+          Bars: amount counted per month. The line tracks cumulative savings across all months.
         </p>
       </section>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
   return (
     <div>
-      <div className="text-ink-muted">{label}</div>
+      <div className="section-eyebrow">{label}</div>
       <div
-        className={`font-semibold tabular-nums ${value < 0 ? "text-status-over" : "text-ink"}`}
+        className={`mt-1 text-[14px] stat-num ${
+          highlight ? "font-bold text-ink" : "font-semibold"
+        } ${value < 0 ? "text-status-over" : "text-ink"}`}
       >
         {value < 0 ? "−" : ""}
         {formatGBP(Math.abs(value))}

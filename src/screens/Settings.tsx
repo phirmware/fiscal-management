@@ -66,40 +66,52 @@ export function SettingsScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">Appearance</h2>
-        <p className="text-xs text-ink-muted mt-1">Theme preference for this device.</p>
-        <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
-          {(["light", "dark", "system"] as ThemePreference[]).map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              role="radio"
-              aria-checked={themePref === opt}
-              onClick={() => setTheme(opt)}
-              className={`btn px-0 py-2 text-sm ${
-                themePref === opt ? "bg-ink text-surface" : "bg-surface-sunken text-ink-soft"
-              }`}
-            >
-              {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
-            </button>
-          ))}
+      <section className="card p-5">
+        <span className="section-eyebrow">Appearance</span>
+        <p className="text-[12px] text-ink-muted mt-1">Theme preference for this device.</p>
+        <div
+          className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken"
+          role="radiogroup"
+          aria-label="Theme"
+        >
+          {(["light", "dark", "system"] as ThemePreference[]).map((opt) => {
+            const active = themePref === opt;
+            return (
+              <button
+                key={opt}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => setTheme(opt)}
+                className={`text-[13px] font-semibold py-2 rounded-lg transition ${
+                  active
+                    ? "bg-surface-card text-ink shadow-sm"
+                    : "text-ink-muted hover:text-ink"
+                }`}
+              >
+                {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+              </button>
+            );
+          })}
         </div>
       </section>
 
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">Categories</h2>
+      <section className="card p-5">
+        <span className="section-eyebrow">Categories</span>
         {budget.categories.length === 0 ? (
-          <p className="text-xs text-ink-muted mt-2">No categories yet.</p>
+          <p className="text-[12px] text-ink-muted mt-3">No categories yet.</p>
         ) : (
-          <ul className="mt-2 flex flex-col gap-2">
+          <ul className="mt-3 flex flex-col gap-2.5">
             {budget.categories.map((c) => {
               const activeType = resolveType(c, month);
               return (
-                <li key={c.id} className="rounded-xl border border-surface-border p-3">
+                <li
+                  key={c.id}
+                  className="rounded-2xl border border-surface-border bg-surface-card p-4"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <input
-                      className="input-base !py-1 !px-2 text-sm font-semibold flex-1 min-w-0"
+                      className="input-base !py-1.5 !px-2.5 !text-[14px] font-semibold flex-1 min-w-0"
                       value={c.name}
                       onChange={(e) => renameCategory(c.id, e.target.value)}
                     />
@@ -107,23 +119,26 @@ export function SettingsScreen() {
                       {c.archived ? "Archived" : activeType}
                     </span>
                   </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    {(["Needs", "Wants", "Savings"] as const).map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        className={`btn text-xs px-0 py-1.5 ${
-                          c.group === g
-                            ? "bg-ink text-surface"
-                            : "bg-surface-sunken text-ink-soft"
-                        }`}
-                        onClick={() => setCategoryGroup(c.id, g)}
-                      >
-                        {g}
-                      </button>
-                    ))}
+                  <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken">
+                    {(["Needs", "Wants", "Savings"] as const).map((g) => {
+                      const active = c.group === g;
+                      return (
+                        <button
+                          key={g}
+                          type="button"
+                          className={`text-[12px] font-semibold py-1.5 rounded-lg transition ${
+                            active
+                              ? "bg-surface-card text-ink shadow-sm"
+                              : "text-ink-muted hover:text-ink"
+                          }`}
+                          onClick={() => setCategoryGroup(c.id, g)}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <ConvertControl
                       currentType={activeType}
                       month={month}
@@ -131,7 +146,7 @@ export function SettingsScreen() {
                     />
                     <button
                       type="button"
-                      className="btn-ghost text-xs px-2 py-1"
+                      className="btn-ghost btn-sm"
                       onClick={() => archiveCategory(c.id, !c.archived)}
                     >
                       {c.archived ? "Unarchive" : "Archive"}
@@ -142,18 +157,18 @@ export function SettingsScreen() {
             })}
           </ul>
         )}
-        <p className="text-xs text-ink-muted mt-3">
+        <p className="text-[12px] text-ink-muted mt-3 leading-snug">
           Conversions take effect from {monthLabel(month)} onwards. Use the month switcher to
           pick a different effective month.
         </p>
       </section>
 
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">Backup</h2>
-        <p className="text-xs text-ink-muted mt-1">
+      <section className="card p-5">
+        <span className="section-eyebrow">Backup</span>
+        <p className="text-[12px] text-ink-muted mt-1 leading-snug">
           JSON export is your only backup. Save somewhere safe.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" onClick={doExport}>
             Export JSON
           </button>
@@ -178,12 +193,12 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">Danger zone</h2>
-        <p className="text-xs text-ink-muted mt-1">
+      <section className="card p-5 border-status-over/20">
+        <span className="section-eyebrow text-status-over">Danger zone</span>
+        <p className="text-[12px] text-ink-muted mt-1 leading-snug">
           Wipes all data on this device. Export first if you want a backup.
         </p>
-        <button type="button" className="btn-danger mt-3" onClick={() => setResetOpen(true)}>
+        <button type="button" className="btn-danger mt-3 w-full" onClick={() => setResetOpen(true)}>
           Reset everything
         </button>
       </section>

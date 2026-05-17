@@ -11,24 +11,24 @@ function Row({
   label,
   value,
   prefix,
-  emphasis,
   hint,
+  muted,
 }: {
   label: string;
   value: number;
   prefix?: string;
-  emphasis?: boolean;
   hint?: string;
+  muted?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 py-1.5">
-      <div className={`text-sm ${emphasis ? "font-semibold text-ink" : "text-ink-soft"}`}>
-        {label}
-        {hint && <div className="text-xs text-ink-muted font-normal mt-0.5">{hint}</div>}
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <div className="min-w-0">
+        <div className={`text-[13px] ${muted ? "text-ink-muted" : "text-ink-soft"}`}>{label}</div>
+        {hint && <div className="text-[11px] text-ink-muted mt-0.5">{hint}</div>}
       </div>
       <div
-        className={`tabular-nums whitespace-nowrap ${
-          emphasis ? "text-base font-semibold text-ink" : "text-sm text-ink-soft"
+        className={`stat-num whitespace-nowrap text-[13px] ${
+          muted ? "text-ink-muted" : "text-ink-soft"
         }`}
       >
         {prefix ?? ""}
@@ -42,41 +42,54 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
   const { income, spendingBudget, savingsAllocated, notYetAssigned } = breakdown;
 
   return (
-    <section className="card p-4">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold text-ink-soft">This month's money</h2>
+    <section className="card-hero p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="section-eyebrow">This month</span>
         {!incomeSet && (
           <button
             type="button"
             onClick={onSetIncome}
-            className="text-xs text-status-info font-medium underline-offset-2 hover:underline"
+            className="text-[11px] font-semibold text-status-info uppercase tracking-wider
+              hover:underline underline-offset-2"
           >
-            Add income
+            + Add income
           </button>
         )}
       </div>
 
-      <div className="mt-2">
-        <Row label="Net income" value={income} />
+      <div className="mt-1 flex items-baseline gap-2">
+        <h2 className="text-display-lg text-ink stat-num">{formatGBP(income)}</h2>
+        <span className="text-[13px] text-ink-muted">net income</span>
+      </div>
+
+      <div className="mt-4 space-y-0">
         <Row
-          label="− Spending budget"
+          label="Spending budget"
           value={spendingBudget}
           prefix="−"
-          hint="Sum of budgets for Needs + Wants categories"
+          hint="Needs + Wants categories"
+          muted
         />
         <Row
-          label="− Savings allocated"
+          label="Savings allocated"
           value={savingsAllocated}
           prefix="−"
-          hint="Sum of budgets for Savings categories"
+          hint="Savings categories"
+          muted
         />
-        <div className="border-t border-surface-border mt-1 pt-1">
-          <Row
-            label="= Not yet assigned"
-            value={notYetAssigned}
-            emphasis
-            hint="Money with no job yet — consider assigning it."
-          />
+      </div>
+
+      <div className="divider mt-2 pt-3">
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <div className="text-[13px] font-semibold text-ink">Not yet assigned</div>
+            <div className="text-[11px] text-ink-muted mt-0.5">
+              Money with no job yet — consider assigning it.
+            </div>
+          </div>
+          <div className="stat-num text-lg font-semibold text-ink whitespace-nowrap">
+            {formatGBP(notYetAssigned)}
+          </div>
         </div>
       </div>
     </section>

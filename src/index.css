@@ -30,7 +30,20 @@
   --c-group-wants: 147 51 234;
   --c-group-savings: 5 150 105;
 
-  --shadow-card: 0 1px 2px 0 rgb(15 17 21 / 0.05);
+  /* Two-layer modern card shadow — hairline + ambient. */
+  --shadow-card:
+    0 1px 0 0 rgb(15 17 21 / 0.04),
+    0 1px 2px 0 rgb(15 17 21 / 0.05),
+    0 4px 12px -4px rgb(15 17 21 / 0.04);
+  --shadow-elevated:
+    0 1px 0 0 rgb(15 17 21 / 0.04),
+    0 4px 8px -2px rgb(15 17 21 / 0.06),
+    0 16px 32px -8px rgb(15 17 21 / 0.08);
+  --shadow-pop:
+    0 12px 32px -8px rgb(15 17 21 / 0.16),
+    0 4px 12px -4px rgb(15 17 21 / 0.08);
+
+  --ring-focus: 0 0 0 3px rgb(var(--c-status-info) / 0.18);
   color-scheme: light;
 }
 
@@ -41,13 +54,11 @@
   --c-surface-sunken: 36 43 58;
   --c-surface-border: 52 62 82;
 
-  /* Off-white text with a touch of warmth — easier on the eyes than pure white. */
   --c-ink: 234 237 244;
   --c-ink-soft: 178 188 206;
   --c-ink-muted: 128 138 158;
   --c-ink-faint: 84 93 112;
 
-  /* Status — softer rose/amber, indigo over plain blue, teal-green throughout. */
   --c-status-ok: 52 211 153;
   --c-status-ok-soft: 17 46 33;
   --c-status-warn: 251 191 36;
@@ -57,15 +68,24 @@
   --c-status-info: 129 140 248;
   --c-status-info-soft: 32 36 70;
 
-  /* Group hues — saturated enough to read on the slate, soft enough not to glare. */
   --c-group-needs: 96 165 250;
   --c-group-wants: 192 132 252;
   --c-group-savings: 52 211 153;
 
-  /* Subtle top-edge highlight gives cards a "raised" feel against the slate. */
+  /* In dark mode, lift cards with a top highlight + ambient depth. */
   --shadow-card:
-    0 1px 2px 0 rgb(0 0 0 / 0.35),
-    inset 0 1px 0 0 rgb(255 255 255 / 0.03);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.04),
+    0 1px 2px 0 rgb(0 0 0 / 0.4),
+    0 8px 24px -8px rgb(0 0 0 / 0.5);
+  --shadow-elevated:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.06),
+    0 4px 8px -2px rgb(0 0 0 / 0.4),
+    0 16px 32px -8px rgb(0 0 0 / 0.6);
+  --shadow-pop:
+    0 12px 32px -8px rgb(0 0 0 / 0.6),
+    0 4px 12px -4px rgb(0 0 0 / 0.4);
+
+  --ring-focus: 0 0 0 3px rgb(var(--c-status-info) / 0.32);
   color-scheme: dark;
 }
 
@@ -78,9 +98,11 @@ body,
 body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
+  font-feature-settings: "cv11", "ss01", "ss03";
+  text-rendering: optimizeLegibility;
 }
 
-/* Smooth theme transitions, but respect reduced-motion preferences. */
+/* Smooth theme transitions; respects reduced-motion. */
 @media (prefers-reduced-motion: no-preference) {
   body,
   .card,
@@ -101,36 +123,170 @@ body {
 }
 
 @layer components {
+  /* ---------- Surfaces ---------- */
   .card {
     @apply bg-surface-card border border-surface-border rounded-2xl;
     box-shadow: var(--shadow-card);
   }
-  .pill {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  .card-hero {
+    @apply card;
+    box-shadow: var(--shadow-elevated);
   }
+  .card-interactive {
+    @apply card cursor-pointer;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+  .card-interactive:hover {
+    box-shadow: var(--shadow-elevated);
+    @apply border-surface-border/80;
+  }
+  .card-interactive:active {
+    transform: translateY(1px) scale(0.998);
+  }
+
+  /* ---------- Pills / badges ---------- */
+  .pill {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium leading-5
+      tracking-tight;
+  }
+  .pill-lg {
+    @apply pill px-2.5 py-1 text-xs;
+  }
+
+  /* ---------- Tap target ---------- */
   .tap {
     @apply min-h-11 min-w-11;
   }
+
+  /* ---------- Inputs ---------- */
   .input-base {
-    @apply w-full rounded-xl border border-surface-border bg-surface-card px-3 py-2 text-base text-ink
-      placeholder:text-ink-faint
-      focus:outline-none focus:ring-2 focus:ring-status-info/40 focus:border-status-info;
+    @apply w-full rounded-xl border border-surface-border bg-surface-card px-3.5 py-2.5
+      text-[15px] text-ink placeholder:text-ink-faint
+      outline-none transition;
   }
+  .input-base:hover {
+    @apply border-surface-border;
+    border-color: rgb(var(--c-ink-faint) / 0.4);
+  }
+  .input-base:focus {
+    @apply border-status-info;
+    box-shadow: var(--ring-focus);
+  }
+  .input-base[disabled] {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* ---------- Buttons ---------- */
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold
-      transition active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5
+      text-sm font-semibold tracking-tight
+      transition select-none
+      active:scale-[0.97] active:translate-y-px
+      disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn:focus-visible {
+    @apply outline-none;
+    box-shadow: var(--ring-focus);
   }
   .btn-primary {
-    @apply btn bg-ink text-surface hover:bg-ink-soft;
+    @apply btn bg-ink text-surface;
+  }
+  .btn-primary:hover {
+    background-color: rgb(var(--c-ink) / 0.92);
   }
   .btn-secondary {
-    @apply btn bg-surface-sunken text-ink hover:bg-surface-border;
+    @apply btn bg-surface-sunken text-ink;
+  }
+  .btn-secondary:hover {
+    background-color: rgb(var(--c-surface-border));
   }
   .btn-danger {
-    @apply btn bg-status-overSoft text-status-over hover:bg-status-over hover:text-surface;
+    @apply btn bg-status-overSoft text-status-over;
+  }
+  .btn-danger:hover {
+    @apply bg-status-over text-surface;
   }
   .btn-ghost {
-    @apply btn text-ink hover:bg-surface-sunken;
+    @apply btn text-ink-soft;
+  }
+  .btn-ghost:hover {
+    @apply bg-surface-sunken text-ink;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+  .btn-icon {
+    @apply inline-flex items-center justify-center rounded-xl
+      tap text-ink-soft transition
+      hover:bg-surface-sunken hover:text-ink
+      active:scale-[0.94] disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  /* ---------- Section headers ---------- */
+  .section-title {
+    @apply text-[13px] font-semibold text-ink-soft tracking-tight uppercase;
+    letter-spacing: 0.02em;
+  }
+  .section-eyebrow {
+    @apply text-[11px] font-semibold text-ink-muted uppercase tracking-wider;
+  }
+
+  /* ---------- Helpers ---------- */
+  .divider {
+    @apply border-t border-surface-border;
+  }
+  .focus-ring:focus-visible {
+    @apply outline-none;
+    box-shadow: var(--ring-focus);
+  }
+  .stat-num {
+    @apply tabular-nums tracking-tight;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .scrim {
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--c-surface) / 0) 0%,
+      rgb(var(--c-surface) / 0.6) 50%,
+      rgb(var(--c-surface)) 100%
+    );
+  }
+  .ring-focus {
+    box-shadow: var(--ring-focus);
+  }
+}
+
+/* Subtle modal entrance — prefers-reduced-motion respected. */
+@media (prefers-reduced-motion: no-preference) {
+  .modal-enter {
+    animation: modalIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .modal-backdrop-enter {
+    animation: backdropIn 180ms ease-out;
+  }
+  @keyframes modalIn {
+    from {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes backdropIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }
 

@@ -16,20 +16,32 @@ export function InsightsScreen() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="card p-1 grid grid-cols-3 gap-1 print:hidden">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`tap text-sm font-semibold rounded-xl py-2 ${
-              tab === t.id ? "bg-ink text-surface" : "text-ink-muted"
-            }`}
-            aria-current={tab === t.id ? "page" : undefined}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div
+        className="card p-1 grid grid-cols-3 gap-1 print:hidden bg-surface-sunken/60
+          border-surface-border/70"
+        role="tablist"
+        aria-label="Insights sub-navigation"
+      >
+        {TABS.map((t) => {
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(t.id)}
+              className={`tap text-[13px] font-semibold rounded-xl py-2.5 transition
+                ${
+                  active
+                    ? "bg-surface-card text-ink shadow-sm"
+                    : "text-ink-muted hover:text-ink-soft"
+                }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
       {tab === "savings" && <SavingsScreen />}
       {tab === "flow" && <FlowScreen />}

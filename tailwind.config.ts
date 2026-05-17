@@ -47,8 +47,21 @@ export default {
           "sans-serif",
         ],
       },
+      fontSize: {
+        // Display / hero numbers
+        "display-xl": ["2.75rem", { lineHeight: "1.05", letterSpacing: "-0.025em", fontWeight: "700" }],
+        "display-lg": ["2rem", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" }],
+        "display-md": ["1.5rem", { lineHeight: "1.15", letterSpacing: "-0.015em", fontWeight: "700" }],
+      },
       maxWidth: {
         phone: "30rem",
+      },
+      borderRadius: {
+        "2xl": "1rem",
+        "3xl": "1.25rem",
+      },
+      spacing: {
+        safe: "env(safe-area-inset-bottom)",
       },
     },
   },
