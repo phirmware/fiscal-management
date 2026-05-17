@@ -19,6 +19,12 @@ export default {
           card: withVar("--c-surface-card"),
           sunken: withVar("--c-surface-sunken"),
           border: withVar("--c-surface-border"),
+          overlay: withVar("--c-surface-overlay"),
+        },
+        accent: {
+          DEFAULT: withVar("--c-accent"),
+          soft: withVar("--c-accent-soft"),
+          strong: withVar("--c-accent-strong"),
         },
         status: {
           ok: withVar("--c-status-ok"),
@@ -48,10 +54,10 @@ export default {
         ],
       },
       fontSize: {
-        // Display / hero numbers
-        "display-xl": ["2.75rem", { lineHeight: "1.05", letterSpacing: "-0.025em", fontWeight: "700" }],
-        "display-lg": ["2rem", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "700" }],
-        "display-md": ["1.5rem", { lineHeight: "1.15", letterSpacing: "-0.015em", fontWeight: "700" }],
+        "display-2xl": ["3.5rem", { lineHeight: "1", letterSpacing: "-0.035em", fontWeight: "700" }],
+        "display-xl": ["2.75rem", { lineHeight: "1.05", letterSpacing: "-0.03em", fontWeight: "700" }],
+        "display-lg": ["2.25rem", { lineHeight: "1.1", letterSpacing: "-0.025em", fontWeight: "700" }],
+        "display-md": ["1.625rem", { lineHeight: "1.15", letterSpacing: "-0.018em", fontWeight: "700" }],
       },
       maxWidth: {
         phone: "30rem",
@@ -59,6 +65,7 @@ export default {
       borderRadius: {
         "2xl": "1rem",
         "3xl": "1.25rem",
+        "4xl": "1.75rem",
       },
       spacing: {
         safe: "env(safe-area-inset-bottom)",

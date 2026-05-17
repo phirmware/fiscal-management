@@ -42,20 +42,32 @@ export function TransactionsScreen() {
 
   const monthTotal = list.reduce((s, t) => s + t.amount, 0);
 
+  // Group transactions by date for the list
+  const groupedByDate = useMemo(() => {
+    const groups: { date: string; label: string; items: typeof list }[] = [];
+    const map = new Map<string, typeof list>();
+    for (const t of list) {
+      if (!map.has(t.date)) map.set(t.date, []);
+      map.get(t.date)!.push(t);
+    }
+    for (const [date, items] of map) {
+      const d = new Date(date);
+      const label = isNaN(d.getTime())
+        ? date
+        : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      groups.push({ date, label, items });
+    }
+    return groups;
+  }, [list]);
+
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card p-5">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <span className="section-eyebrow">Activity</span>
-            <div className="mt-1 text-display-md text-ink stat-num">{formatGBP(monthTotal)}</div>
-            <div className="text-[12px] text-ink-muted mt-1">
-              {list.length} {list.length === 1 ? "entry" : "entries"} in {monthLabel(month)}
-            </div>
-          </div>
+    <div className="flex flex-col gap-6">
+      <section className="card-hero p-6">
+        <div className="section-row">
+          <span className="section-eyebrow">Spent in {monthLabel(month)}</span>
           <button
             type="button"
-            className="btn-primary"
+            className="btn-accent btn-sm"
             onClick={() => {
               setEditing(null);
               setOpen(true);
@@ -65,10 +77,18 @@ export function TransactionsScreen() {
             + Add
           </button>
         </div>
+        <div className="mt-2">
+          <h2 className="text-display-xl text-balance-gradient stat-num">
+            {formatGBP(monthTotal)}
+          </h2>
+        </div>
+        <div className="text-[12px] text-ink-muted mt-1">
+          {list.length} {list.length === 1 ? "entry" : "entries"}
+        </div>
 
         {budget.categories.length > 0 && (
           <select
-            className="input-base mt-4"
+            className="input-base mt-5"
             value={filterCat}
             onChange={(e) => setFilterCat(e.target.value)}
           >
@@ -83,48 +103,63 @@ export function TransactionsScreen() {
       </section>
 
       {budget.categories.length === 0 ? (
-        <div className="card p-8 text-center">
+        <div className="card p-10 text-center">
           <p className="text-[14px] text-ink-soft">Create a category first to start logging spend.</p>
         </div>
       ) : list.length === 0 ? (
-        <div className="card p-8 text-center">
+        <div className="card p-10 text-center">
           <p className="text-[14px] text-ink-soft">Nothing logged this month yet.</p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {list.map((t) => {
-            const cat = categoriesById.get(t.categoryId);
-            const d = new Date(t.date);
-            const day = isNaN(d.getTime())
-              ? t.date
-              : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+        <div className="flex flex-col gap-5">
+          {groupedByDate.map((group) => {
+            const dayTotal = group.items.reduce((s, t) => s + t.amount, 0);
             return (
-              <li key={t.id}>
-                <button
-                  type="button"
-                  className="card-interactive w-full text-left p-4 flex items-center justify-between gap-3"
-                  onClick={() => {
-                    setEditing(t);
-                    setOpen(true);
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
-                      {cat?.name ?? "Unknown"}
-                    </div>
-                    <div className="text-[12px] text-ink-muted mt-0.5">
-                      {day}
-                      {t.note ? ` · ${t.note}` : ""}
-                    </div>
-                  </div>
-                  <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
-                    {formatGBP(t.amount)}
-                  </div>
-                </button>
-              </li>
+              <section key={group.date}>
+                <div className="section-row mb-2 px-1">
+                  <span className="text-[12px] font-semibold text-ink-soft tracking-tight">
+                    {group.label}
+                  </span>
+                  <span className="text-[11px] text-ink-muted stat-num">
+                    {formatGBP(dayTotal)}
+                  </span>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {group.items.map((t) => {
+                    const cat = categoriesById.get(t.categoryId);
+                    return (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          className="card-interactive w-full text-left p-4 flex items-center
+                            justify-between gap-3"
+                          onClick={() => {
+                            setEditing(t);
+                            setOpen(true);
+                          }}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
+                              {cat?.name ?? "Unknown"}
+                            </div>
+                            {t.note && (
+                              <div className="text-[12px] text-ink-muted mt-0.5 truncate">
+                                {t.note}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
+                            {formatGBP(t.amount)}
+                          </div>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
             );
           })}
-        </ul>
+        </div>
       )}
 
       <TxnModal

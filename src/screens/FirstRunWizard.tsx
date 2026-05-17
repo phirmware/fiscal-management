@@ -80,40 +80,43 @@ export function FirstRunWizard() {
   }
 
   return (
-    <div className="min-h-full bg-surface flex flex-col items-center pb-safe">
-      <div className="w-full max-w-phone flex flex-col gap-4 p-4">
-        <header className="pt-2">
-          <h1 className="text-display-lg text-ink tracking-tight">Welcome</h1>
-          <p className="text-[14px] text-ink-soft mt-2 leading-relaxed">
-            Two quick steps. Everything stays on this device — no account, no sync.
+    <div className="min-h-full flex flex-col items-center pb-safe">
+      <div className="w-full max-w-phone flex flex-col gap-6 p-4">
+        <header className="pt-6">
+          <span className="section-eyebrow text-accent">Welcome</span>
+          <h1 className="text-display-xl text-balance-gradient tracking-tight mt-2">
+            Plan with intent.
+          </h1>
+          <p className="text-[14px] text-ink-soft mt-3 leading-relaxed max-w-[22rem]">
+            Two quick steps. Everything stays on this device — no account, no sync, ever.
           </p>
         </header>
 
-        <section className="card-hero p-5">
+        <section className="card-hero p-6">
           <div className="flex items-baseline gap-3">
             <span
-              className="flex-shrink-0 w-7 h-7 rounded-full bg-surface-sunken text-ink-soft
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-accent/15 text-accent
                 flex items-center justify-center text-[13px] font-semibold"
             >
               1
             </span>
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink">
+            <h2 className="text-[16px] font-semibold tracking-tight text-ink">
               Monthly net income
             </h2>
           </div>
           <p className="text-[12px] text-ink-muted mt-2 ml-10 leading-snug">
             After tax. We'll use this for the 50/30/20 starting point.
           </p>
-          <div className="relative mt-3">
+          <div className="relative mt-4">
             <span
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted
-                text-lg font-semibold pointer-events-none"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted
+                text-xl font-semibold pointer-events-none stat-num"
               aria-hidden="true"
             >
               £
             </span>
             <input
-              className="input-base !pl-7 text-xl font-semibold stat-num"
+              className="input-base !pl-9 text-2xl font-semibold stat-num"
               inputMode="decimal"
               value={incomeDraft}
               onChange={(e) => setIncomeDraft(e.target.value)}
@@ -132,20 +135,22 @@ export function FirstRunWizard() {
               />
             </div>
           )}
-          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
+          <p className="text-[11px] text-ink-muted mt-3 leading-snug">
             A rough benchmark — not pass/fail. Adjust to your reality.
           </p>
         </section>
 
-        <section className="card p-5">
+        <section className="card p-6">
           <div className="flex items-baseline gap-3">
             <span
-              className="flex-shrink-0 w-7 h-7 rounded-full bg-surface-sunken text-ink-soft
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-accent/15 text-accent
                 flex items-center justify-center text-[13px] font-semibold"
             >
               2
             </span>
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink">Starter categories</h2>
+            <h2 className="text-[16px] font-semibold tracking-tight text-ink">
+              Starter categories
+            </h2>
           </div>
           <p className="text-[12px] text-ink-muted mt-2 ml-10 leading-snug">
             Tick what fits. Budgets prefilled from a rough split of income; edit to taste.
@@ -157,18 +162,18 @@ export function FirstRunWizard() {
               return (
                 <li
                   key={s.name}
-                  className="flex items-center gap-3 py-2.5 border-b border-surface-border
+                  className="flex items-center gap-3 py-3 border-b border-surface-border
                     last:border-b-0"
                 >
                   <input
                     type="checkbox"
-                    className="w-5 h-5 accent-current rounded"
+                    className="w-5 h-5 accent-accent rounded"
                     checked={ch.selected}
                     onChange={() => toggle(s.name)}
                     aria-label={`Include ${s.name}`}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-medium text-ink truncate">{s.name}</div>
+                    <div className="text-[14px] font-semibold text-ink truncate">{s.name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="pill bg-surface-sunken text-ink-muted">{s.type}</span>
                       <span className="text-[11px] text-ink-muted">{s.group}</span>
@@ -189,8 +194,8 @@ export function FirstRunWizard() {
           </ul>
         </section>
 
-        <div className="sticky bottom-0 pb-safe pt-3 -mx-4 px-4 scrim">
-          <button type="button" className="btn-primary w-full" onClick={finish}>
+        <div className="sticky bottom-0 pb-safe pt-4 -mx-4 px-4 scrim">
+          <button type="button" className="btn-accent w-full" onClick={finish}>
             Get started — {monthLabel(month)}
           </button>
           <button
@@ -208,12 +213,14 @@ export function FirstRunWizard() {
 
 function Tile({ label, value, dot }: { label: string; value: string; dot: string }) {
   return (
-    <div className="rounded-xl bg-surface-sunken p-2.5">
+    <div className="rounded-2xl bg-surface-sunken/70 border border-surface-border/60 p-3">
       <div className="flex items-center gap-1.5">
         <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden="true" />
-        <span className="text-[10px] uppercase tracking-wider text-ink-muted">{label}</span>
+        <span className="text-[10px] uppercase tracking-widest text-ink-muted font-semibold">
+          {label}
+        </span>
       </div>
-      <div className="mt-1 text-[13px] font-semibold stat-num text-ink">{value}</div>
+      <div className="mt-1.5 text-[14px] font-semibold stat-num text-ink">{value}</div>
     </div>
   );
 }

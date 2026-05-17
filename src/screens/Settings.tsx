@@ -65,12 +65,13 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <section className="card p-5">
-        <span className="section-eyebrow">Appearance</span>
+        <h2 className="section-title">Appearance</h2>
         <p className="text-[12px] text-ink-muted mt-1">Theme preference for this device.</p>
         <div
-          className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken"
+          className="mt-4 grid grid-cols-3 gap-1 p-1 rounded-2xl bg-surface-sunken
+            border border-surface-border/60"
           role="radiogroup"
           aria-label="Theme"
         >
@@ -83,10 +84,8 @@ export function SettingsScreen() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setTheme(opt)}
-                className={`text-[13px] font-semibold py-2 rounded-lg transition ${
-                  active
-                    ? "bg-surface-card text-ink shadow-sm"
-                    : "text-ink-muted hover:text-ink"
+                className={`text-[13px] font-semibold py-2.5 rounded-xl transition ${
+                  active ? "pill-active" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
@@ -97,7 +96,7 @@ export function SettingsScreen() {
       </section>
 
       <section className="card p-5">
-        <span className="section-eyebrow">Categories</span>
+        <h2 className="section-title">Categories</h2>
         {budget.categories.length === 0 ? (
           <p className="text-[12px] text-ink-muted mt-3">No categories yet.</p>
         ) : (
@@ -119,7 +118,10 @@ export function SettingsScreen() {
                       {c.archived ? "Archived" : activeType}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken">
+                  <div
+                    className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken
+                      border border-surface-border/60"
+                  >
                     {(["Needs", "Wants", "Savings"] as const).map((g) => {
                       const active = c.group === g;
                       return (
@@ -127,9 +129,7 @@ export function SettingsScreen() {
                           key={g}
                           type="button"
                           className={`text-[12px] font-semibold py-1.5 rounded-lg transition ${
-                            active
-                              ? "bg-surface-card text-ink shadow-sm"
-                              : "text-ink-muted hover:text-ink"
+                            active ? "pill-active" : "text-ink-muted hover:text-ink"
                           }`}
                           onClick={() => setCategoryGroup(c.id, g)}
                         >
@@ -164,7 +164,7 @@ export function SettingsScreen() {
       </section>
 
       <section className="card p-5">
-        <span className="section-eyebrow">Backup</span>
+        <h2 className="section-title">Backup</h2>
         <p className="text-[12px] text-ink-muted mt-1 leading-snug">
           JSON export is your only backup. Save somewhere safe.
         </p>
@@ -194,7 +194,9 @@ export function SettingsScreen() {
       </section>
 
       <section className="card p-5 border-status-over/20">
-        <span className="section-eyebrow text-status-over">Danger zone</span>
+        <h2 className="text-[13px] font-semibold text-status-over uppercase tracking-widest">
+          Danger zone
+        </h2>
         <p className="text-[12px] text-ink-muted mt-1 leading-snug">
           Wipes all data on this device. Export first if you want a backup.
         </p>

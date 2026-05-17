@@ -22,12 +22,14 @@ function GroupComparisonRow({
   label,
   actual,
   benchmark,
-  colour,
+  dotColour,
+  fillColour,
 }: {
   label: string;
   actual: number;
   benchmark: number;
-  colour: string;
+  dotColour: string;
+  fillColour: string;
 }) {
   const ratio = benchmark <= 0 ? 0 : actual / benchmark;
   const fillPct = Math.min(100, Math.max(0, ratio * 100));
@@ -35,22 +37,29 @@ function GroupComparisonRow({
   const overshootDisplay = Math.min(100, overshootPct);
   return (
     <div>
-      <div className="flex justify-between text-xs text-ink-soft">
-        <span className="font-medium">{label}</span>
-        <span className="tabular-nums">
-          {formatGBP(actual)} <span className="text-ink-muted">vs {formatGBP(benchmark)}</span>
+      <div className="flex items-baseline justify-between">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${dotColour}`} aria-hidden="true" />
+          <span className="text-[13px] font-semibold text-ink tracking-tight">{label}</span>
+        </div>
+        <span className="stat-num text-[13px] text-ink-soft">
+          <span className="font-semibold text-ink">{formatGBP(actual)}</span>{" "}
+          <span className="text-ink-muted">/ {formatGBP(benchmark)}</span>
           {overshootPct > 0 && (
-            <span className="ml-1.5 text-status-warn font-medium">
+            <span className="ml-1.5 text-status-warn font-semibold">
               +{Math.round(overshootPct)}%
             </span>
           )}
         </span>
       </div>
-      <div className="mt-1 h-2 rounded-full bg-surface-sunken overflow-hidden flex">
-        <div className={`h-full ${colour}`} style={{ width: `${fillPct}%` }} />
+      <div className="mt-2 h-1.5 w-full rounded-full bg-surface-sunken overflow-hidden flex">
+        <div
+          className={`h-full ${fillColour} rounded-full transition-[width] duration-500 ease-out`}
+          style={{ width: `${fillPct}%` }}
+        />
         {overshootDisplay > 0 && (
           <div
-            className="h-full bg-status-warn/80"
+            className="h-full bg-status-warn/70"
             style={{ width: `${overshootDisplay * 0.5}%` }}
             title={`${Math.round(overshootPct)}% over benchmark`}
           />
@@ -95,7 +104,7 @@ export function HomeScreen() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <IncomeBreakdown
         breakdown={breakdown}
         incomeSet={monthSummary.incomeSet}
@@ -107,71 +116,70 @@ export function HomeScreen() {
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
-      <section className="card p-5">
-        <div className="flex items-baseline justify-between gap-3">
+      <section className="px-1">
+        <div className="section-row mb-4">
           <div>
-            <span className="section-eyebrow">50 / 30 / 20</span>
-            <h2 className="text-[15px] font-semibold tracking-tight text-ink mt-0.5">
-              How this month splits
-            </h2>
+            <h2 className="section-title">Money split</h2>
+            <p className="text-[12px] text-ink-muted mt-0.5">
+              How your spending compares to the 50 / 30 / 20 benchmark.
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setDraftIncome(String(monthSummary.income || ""));
-              setIncomeOpen(true);
-            }}
-            className="text-[12px] font-medium text-status-info hover:underline underline-offset-2"
-          >
-            Edit income
-          </button>
         </div>
-        <p className="text-[12px] text-ink-muted mt-1 leading-snug">
-          A rough benchmark — not pass/fail. Cost of living and income level shift these.
-        </p>
-        <div className="mt-4 flex flex-col gap-3.5">
+        <div className="card p-5 space-y-4">
           <GroupComparisonRow
             label="Needs"
             actual={totals.needs}
             benchmark={benchmark.needs}
-            colour="bg-group-needs"
+            dotColour="bg-group-needs"
+            fillColour="bg-group-needs"
           />
           <GroupComparisonRow
             label="Wants"
             actual={totals.wants}
             benchmark={benchmark.wants}
-            colour="bg-group-wants"
+            dotColour="bg-group-wants"
+            fillColour="bg-group-wants"
           />
           <GroupComparisonRow
             label="Savings"
             actual={totals.savings}
             benchmark={benchmark.savings}
-            colour="bg-group-savings"
+            dotColour="bg-group-savings"
+            fillColour="bg-group-savings"
           />
         </div>
       </section>
 
-      <section className="card p-5">
-        <span className="section-eyebrow">Savings</span>
-        <div className="mt-2 flex items-end justify-between gap-3">
+      <section className="px-1">
+        <div className="section-row mb-4">
           <div>
-            <div className="text-[11px] text-ink-muted uppercase tracking-wider">This month</div>
-            <div className="text-display-md text-ink stat-num mt-1">
-              {formatGBP(savedThisMonth)}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[11px] text-ink-muted uppercase tracking-wider">Cumulative</div>
-            <div className="text-display-md text-ink stat-num mt-1">
-              {formatGBP(savedCumulative)}
-            </div>
+            <h2 className="section-title">Savings</h2>
+            <p className="text-[12px] text-ink-muted mt-0.5">
+              Across all Savings categories.
+            </p>
           </div>
         </div>
-        {!hasSavingsCategories && (
-          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
-            No Savings categories yet. Add one from Budget → + Category and tag it Savings.
-          </p>
-        )}
+        <div className="card p-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="section-eyebrow text-ink-muted">This month</div>
+              <div className="text-display-md text-ink stat-num mt-2">
+                {formatGBP(savedThisMonth)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="section-eyebrow text-ink-muted">Cumulative</div>
+              <div className="text-display-md text-ink stat-num mt-2">
+                {formatGBP(savedCumulative)}
+              </div>
+            </div>
+          </div>
+          {!hasSavingsCategories && (
+            <p className="text-[12px] text-ink-muted mt-4 leading-snug">
+              No Savings categories yet. Add one from Budget → + Category and tag it Savings.
+            </p>
+          )}
+        </div>
       </section>
 
       <Modal
@@ -183,7 +191,7 @@ export function HomeScreen() {
             <button type="button" className="btn-ghost" onClick={() => setIncomeOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-primary" onClick={saveIncome}>
+            <button type="button" className="btn-accent" onClick={saveIncome}>
               Save
             </button>
           </>
@@ -192,15 +200,24 @@ export function HomeScreen() {
         <label className="block text-[13px] font-medium text-ink-soft mb-2">
           Net (after-tax) income
         </label>
-        <input
-          type="text"
-          inputMode="decimal"
-          className="input-base text-lg font-semibold stat-num"
-          value={draftIncome}
-          onChange={(e) => setDraftIncome(e.target.value)}
-          placeholder="e.g. 2500"
-          autoFocus
-        />
+        <div className="relative">
+          <span
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted
+              text-xl font-semibold pointer-events-none stat-num"
+            aria-hidden="true"
+          >
+            £
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            className="input-base !pl-9 text-2xl font-semibold stat-num"
+            value={draftIncome}
+            onChange={(e) => setDraftIncome(e.target.value)}
+            placeholder="2500"
+            autoFocus
+          />
+        </div>
         <p className="text-[12px] text-ink-muted mt-2 leading-snug">
           Applies only to this month. Set per-month so a raise or side-hustle flows through.
         </p>

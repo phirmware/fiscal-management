@@ -86,42 +86,51 @@ export function BottomNav() {
   const setSelectedScreen = useAppStore((s) => s.setSelectedScreen);
 
   return (
-    <nav
+    <div
       className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone
-        bg-surface-card/95 backdrop-blur-md border-t border-surface-border
-        pb-[env(safe-area-inset-bottom)] print:hidden"
-      aria-label="Primary"
+        pb-[env(safe-area-inset-bottom)] pt-2 px-3 print:hidden"
+      aria-hidden="false"
     >
-      <ul className="grid grid-cols-5 px-2 pt-2">
-        {ITEMS.map((item) => {
-          const active = item.id === screen;
-          return (
-            <li key={item.id} className="flex">
-              <button
-                type="button"
-                onClick={() => setSelectedScreen(item.id)}
-                className="tap w-full flex flex-col items-center justify-center gap-1 py-1.5 rounded-xl
-                  transition-colors text-ink-muted hover:text-ink-soft"
-                aria-current={active ? "page" : undefined}
-                aria-label={item.label}
-              >
-                <span
-                  className={`flex items-center justify-center rounded-full transition-all
-                    ${active ? "bg-ink text-surface px-4 py-1" : "px-2 py-1"}`}
+      <nav
+        className="card-glass rounded-3xl px-2 py-2"
+        style={{ boxShadow: "var(--shadow-pop)" }}
+        aria-label="Primary"
+      >
+        <ul className="grid grid-cols-5">
+          {ITEMS.map((item) => {
+            const active = item.id === screen;
+            return (
+              <li key={item.id} className="flex">
+                <button
+                  type="button"
+                  onClick={() => setSelectedScreen(item.id)}
+                  className="tap w-full flex flex-col items-center justify-center gap-1 py-1.5
+                    rounded-2xl transition"
+                  aria-current={active ? "page" : undefined}
+                  aria-label={item.label}
                 >
-                  <item.Icon className="w-[22px] h-[22px]" />
-                </span>
-                <span
-                  className={`text-[11px] leading-tight transition-colors
-                    ${active ? "text-ink font-semibold" : ""}`}
-                >
-                  {item.label}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+                  <span
+                    className={`flex items-center justify-center transition-all
+                      ${
+                        active
+                          ? "px-3.5 py-1 rounded-full bg-accent/15 text-accent"
+                          : "px-2 py-1 text-ink-muted"
+                      }`}
+                  >
+                    <item.Icon className="w-[22px] h-[22px]" />
+                  </span>
+                  <span
+                    className={`text-[11px] leading-tight transition-colors
+                      ${active ? "text-ink font-semibold" : "text-ink-muted"}`}
+                  >
+                    {item.label}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </div>
   );
 }

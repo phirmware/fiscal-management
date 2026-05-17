@@ -57,52 +57,59 @@ export function SavingsScreen() {
   }, [savingsCategories, monthSummary, month]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card-hero p-5">
-        <span className="section-eyebrow">{monthLabel(month)} savings</span>
-        <div className="mt-2 flex items-end justify-between gap-3">
+    <div className="flex flex-col gap-6">
+      <section className="card-hero p-6">
+        <span className="section-eyebrow">Cumulative savings</span>
+        <div className="mt-2">
+          <h2 className="text-display-xl text-balance-gradient stat-num">
+            {formatGBP(cumulative)}
+          </h2>
+        </div>
+        <div className="mt-5 pt-4 border-t border-surface-border flex items-baseline justify-between">
           <div>
-            <div className="text-[11px] text-ink-muted uppercase tracking-wider">This month</div>
-            <div className="text-display-md text-ink stat-num mt-1">{formatGBP(monthNet)}</div>
+            <div className="section-eyebrow text-ink-muted">{monthLabel(month)}</div>
+            <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+              {formatGBP(monthNet)}
+            </div>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] text-ink-muted uppercase tracking-wider">Cumulative</div>
-            <div className="text-display-md text-ink stat-num mt-1">{formatGBP(cumulative)}</div>
+          <div className="text-right max-w-[60%]">
+            <p className="text-[11px] text-ink-muted leading-snug">
+              Per Savings category we count whichever is larger — the budget or the logged
+              activities.
+            </p>
           </div>
         </div>
-        <p className="text-[12px] text-ink-muted mt-3 leading-snug">
-          Per Savings category we count whichever is larger — the budget you set or the
-          activities you logged. Cumulative sums this across all months.
-        </p>
       </section>
 
-      <section className="card p-5">
-        <div className="flex items-baseline justify-between">
-          <span className="section-eyebrow">Savings categories</span>
+      <section className="px-1">
+        <div className="section-row mb-4">
+          <h2 className="section-title">Savings categories</h2>
           <button
             type="button"
-            className="text-[12px] font-medium text-status-info hover:underline underline-offset-2"
+            className="text-[12px] font-medium text-accent hover:underline underline-offset-2"
             onClick={() => setSelectedScreen("budget")}
           >
             Manage on Budget →
           </button>
         </div>
         {rowsForCategories.length === 0 ? (
-          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
-            No Savings-tagged categories yet. Add one via Budget → + Category, set the group
-            to Savings, and pick Pot if you want the balance to roll over.
-          </p>
+          <div className="card p-6 text-center">
+            <p className="text-[13px] text-ink-soft leading-snug">
+              No Savings-tagged categories yet. Add one via Budget → + Category, set the group
+              to Savings, and pick Pot if you want the balance to roll over.
+            </p>
+          </div>
         ) : (
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {rowsForCategories.map((r) => (
-              <li
-                key={r.id}
-                className="rounded-2xl border border-surface-border bg-surface-card p-4"
-              >
+              <li key={r.id} className="card p-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-semibold tracking-tight text-ink">
-                    {r.name}
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2 h-2 rounded-full bg-group-savings" aria-hidden="true" />
+                    <span className="text-[15px] font-semibold tracking-tight text-ink truncate">
+                      {r.name}
+                    </span>
+                  </div>
                   <span className="pill bg-surface-sunken text-ink-muted">{r.type}</span>
                 </div>
                 <div className="mt-3 grid grid-cols-4 gap-3">
@@ -115,11 +122,13 @@ export function SavingsScreen() {
                   />
                 </div>
                 {r.type === "Pot" && r.carryIn !== 0 && (
-                  <p className="text-[12px] text-ink-muted mt-3">
-                    Carried in from last month:{" "}
+                  <p className="text-[11px] text-ink-muted mt-3">
+                    Carried in:{" "}
                     <span
                       className={
-                        r.carryIn >= 0 ? "text-status-ok font-medium" : "text-status-over font-medium"
+                        r.carryIn >= 0
+                          ? "text-status-ok font-semibold stat-num"
+                          : "text-status-over font-semibold stat-num"
                       }
                     >
                       {r.carryIn >= 0 ? "+" : "−"}
@@ -133,15 +142,15 @@ export function SavingsScreen() {
         )}
       </section>
 
-      <section className="card p-5">
-        <div className="flex items-baseline justify-between gap-2">
+      <section className="px-1">
+        <div className="section-row mb-4">
           <div>
-            <span className="section-eyebrow">Trend</span>
-            <div className="text-[13px] text-ink-soft mt-0.5">
+            <h2 className="section-title">Trend</h2>
+            <p className="text-[12px] text-ink-muted mt-0.5">
               {monthLabel(trendFrom)} – {monthLabel(month)}
-            </div>
+            </p>
           </div>
-          <div className="flex gap-1 p-1 rounded-xl bg-surface-sunken">
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-sunken border border-surface-border/60">
             {([6, 12, 24] as const).map((n) => {
               const active = trendRange === n;
               return (
@@ -149,9 +158,7 @@ export function SavingsScreen() {
                   key={n}
                   type="button"
                   className={`text-[12px] px-2.5 py-1 rounded-lg transition font-semibold ${
-                    active
-                      ? "bg-surface-card text-ink shadow-sm"
-                      : "text-ink-muted hover:text-ink"
+                    active ? "pill-active" : "text-ink-muted hover:text-ink"
                   }`}
                   onClick={() => setTrendRange(n)}
                 >
@@ -161,12 +168,12 @@ export function SavingsScreen() {
             })}
           </div>
         </div>
-        <div className="mt-4">
+        <div className="card p-4">
           <SavingsTrendChart points={trend} />
+          <p className="text-[11px] text-ink-muted mt-2 leading-snug px-2">
+            Bars: amount counted per month. Line: cumulative savings across all months.
+          </p>
         </div>
-        <p className="text-[12px] text-ink-muted mt-2 leading-snug">
-          Bars: amount counted per month. The line tracks cumulative savings across all months.
-        </p>
       </section>
     </div>
   );

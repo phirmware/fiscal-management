@@ -12,7 +12,7 @@ const STATUS_TAG_CLASSES: Record<string, string> = {
   empty: "bg-surface-sunken text-ink-muted",
 };
 
-const GROUP_DOT: Record<string, string> = {
+const GROUP_BG: Record<string, string> = {
   Needs: "bg-group-needs",
   Wants: "bg-group-wants",
   Savings: "bg-group-savings",
@@ -44,22 +44,33 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
 
   const reference = row.type === "Pot" ? row.budgeted + row.carryIn : row.budgeted;
   const statusLabel =
-    row.status === "over" ? "Over" : row.status === "close" ? "Close" : row.status === "ok" ? "On track" : "—";
+    row.status === "over"
+      ? "Over"
+      : row.status === "close"
+        ? "Close"
+        : row.status === "ok"
+          ? "On track"
+          : "—";
 
   return (
-    <div className="card p-4 flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="card p-4 flex flex-col gap-3.5">
+      <div className="flex items-start gap-3">
+        <span
+          className={`mt-1.5 flex-shrink-0 w-1.5 h-1.5 rounded-full ${GROUP_BG[row.group] ?? ""}`}
+          aria-hidden="true"
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-1.5 h-1.5 rounded-full ${GROUP_DOT[row.group] ?? ""}`}
-              aria-hidden="true"
-            />
+          <div className="flex items-baseline justify-between gap-2">
             <h3 className="text-[15px] font-semibold tracking-tight text-ink truncate">
               {row.name}
             </h3>
+            <span
+              className={`pill-lg ${STATUS_TAG_CLASSES[row.status] ?? ""} flex-shrink-0`}
+            >
+              {statusLabel}
+            </span>
           </div>
-          <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+          <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
             <span className="pill bg-surface-sunken text-ink-muted">{row.type}</span>
             <span className="pill bg-surface-sunken text-ink-muted">{row.group}</span>
             {row.type === "Pot" && row.carryIn !== 0 && (
@@ -77,7 +88,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
             )}
             {isPrefilled && row.budgeted > 0 && (
               <span
-                className="pill bg-status-infoSoft text-status-info"
+                className="pill bg-accent-soft text-accent"
                 title={`Prefilled from ${monthLabel(row.prefillSourceMonth!)}`}
               >
                 from {monthLabel(row.prefillSourceMonth!)}
@@ -85,15 +96,14 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
             )}
           </div>
         </div>
-        <span className={`pill-lg ${STATUS_TAG_CLASSES[row.status] ?? ""}`}>{statusLabel}</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 pl-4 -ml-px">
         <div>
-          <div className="section-eyebrow">Budgeted</div>
+          <div className="section-eyebrow text-ink-muted">Budgeted</div>
           {editing ? (
             <input
-              className="input-base !py-1.5 !px-2 !text-[15px] !font-semibold mt-1 w-full"
+              className="input-base !py-2 !px-2.5 !text-[15px] !font-semibold mt-1.5 w-full stat-num"
               type="text"
               inputMode="decimal"
               autoFocus
@@ -108,7 +118,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           ) : row.budgeted === 0 ? (
             <button
               type="button"
-              className="mt-1 text-[15px] font-semibold text-status-info hover:underline
+              className="mt-1.5 text-[15px] font-semibold text-accent hover:underline
                 underline-offset-2 focus-ring rounded"
               onClick={startEdit}
             >
@@ -117,10 +127,10 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           ) : (
             <button
               type="button"
-              className={`mt-1 text-[15px] font-semibold stat-num border-b border-dashed
+              className={`mt-1.5 text-[15px] font-semibold stat-num border-b border-dashed
                 focus-ring rounded ${
                   isPrefilled
-                    ? "text-ink-soft border-status-info/50 italic"
+                    ? "text-ink-soft border-accent/50 italic"
                     : "text-ink border-ink-faint"
                 }`}
               onClick={startEdit}
@@ -130,15 +140,15 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           )}
         </div>
         <div>
-          <div className="section-eyebrow">Spent</div>
-          <div className="mt-1 text-[15px] font-semibold stat-num text-ink">
+          <div className="section-eyebrow text-ink-muted">Spent</div>
+          <div className="mt-1.5 text-[15px] font-semibold stat-num text-ink">
             {formatGBP(row.spent)}
           </div>
         </div>
         <div>
-          <div className="section-eyebrow">Available</div>
+          <div className="section-eyebrow text-ink-muted">Available</div>
           <div
-            className={`mt-1 text-[15px] font-semibold stat-num ${
+            className={`mt-1.5 text-[15px] font-semibold stat-num ${
               row.available < 0 ? "text-status-over" : "text-ink"
             } ${isPrefilled ? "italic text-ink-soft" : ""}`}
           >
@@ -157,14 +167,14 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
       )}
 
       {row.available < 0 && (
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 pt-1">
           <span className="text-[12px] text-status-over font-medium">
             {row.acknowledged
               ? "Overspend accepted."
               : `Over by ${formatGBP(-row.available)}.`}
           </span>
           {!row.acknowledged && onResolveOverspend && (
-            <button type="button" className="btn-secondary btn-sm" onClick={onResolveOverspend}>
+            <button type="button" className="btn-accent btn-sm" onClick={onResolveOverspend}>
               Resolve
             </button>
           )}

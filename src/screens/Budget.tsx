@@ -53,44 +53,76 @@ export function BudgetScreen() {
   for (const r of rows) byGroup[r.group].push(r);
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card p-5">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="section-eyebrow">Month at a glance</span>
-          <button type="button" className="btn-secondary btn-sm" onClick={() => setAddOpen(true)}>
+    <div className="flex flex-col gap-6">
+      <section className="card-hero p-6">
+        <div className="section-row">
+          <span className="section-eyebrow">Unallocated this month</span>
+          <button type="button" className="btn-accent btn-sm" onClick={() => setAddOpen(true)}>
             + Category
           </button>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-3">
-          <Stat label="Budgeted" value={monthSummary.totalBudgeted} />
-          <Stat label="Spent" value={monthSummary.totalSpent} />
-          <Stat label="Unallocated" value={monthSummary.unallocated} />
+        <div className="mt-2">
+          <h2
+            className={`text-display-xl stat-num ${
+              monthSummary.unallocated < 0 ? "text-status-over" : "text-balance-gradient"
+            }`}
+          >
+            {monthSummary.unallocated < 0 ? "−" : ""}
+            {formatGBP(Math.abs(monthSummary.unallocated))}
+          </h2>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-4 pt-4 border-t border-surface-border">
+          <div>
+            <div className="section-eyebrow text-ink-muted">Budgeted</div>
+            <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+              {formatGBP(monthSummary.totalBudgeted)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="section-eyebrow text-ink-muted">Spent</div>
+            <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+              {formatGBP(monthSummary.totalSpent)}
+            </div>
+          </div>
         </div>
       </section>
 
       {releases.length > 0 && (
-        <section className="rounded-2xl border border-status-info/30 bg-status-infoSoft/40 p-4">
-          <h2 className="text-[14px] font-semibold text-ink tracking-tight">
-            {releases.length === 1
-              ? `${releases[0]!.categoryName}: ${formatGBP(Math.abs(releases[0]!.amount))} released from Pot→Limit conversion.`
-              : `${releases.length} categories converted — released amounts need a home.`}
-          </h2>
-          <p className="text-[12px] text-ink-soft mt-1 leading-snug">
-            The accumulated Pot balance from last month is no longer earmarked. Assign it
-            elsewhere or leave it in unallocated.
-          </p>
-          <ul className="mt-3 flex flex-col gap-1.5">
+        <section className="rounded-3xl border border-accent/30 bg-accent/8 p-5"
+          style={{ background: "rgb(var(--c-accent) / 0.06)" }}
+        >
+          <div className="flex items-start gap-3">
+            <div
+              className="flex-shrink-0 w-9 h-9 rounded-full bg-accent/15 text-accent
+                flex items-center justify-center font-semibold"
+              aria-hidden="true"
+            >
+              ↻
+            </div>
+            <div>
+              <h2 className="text-[14px] font-semibold text-ink tracking-tight">
+                {releases.length === 1
+                  ? `${formatGBP(Math.abs(releases[0]!.amount))} released from ${releases[0]!.categoryName}`
+                  : `${releases.length} categories converted — released amounts need a home`}
+              </h2>
+              <p className="text-[12px] text-ink-soft mt-1 leading-snug">
+                The accumulated Pot balance is no longer earmarked. Assign it elsewhere or
+                leave it in unallocated.
+              </p>
+            </div>
+          </div>
+          <ul className="mt-4 flex flex-col gap-2">
             {releases.map((r) => (
               <li
                 key={r.categoryId}
-                className="flex items-center justify-between gap-2 rounded-xl bg-surface-card/50
-                  border border-status-info/15 px-3 py-2"
+                className="flex items-center justify-between gap-2 rounded-2xl bg-surface-card
+                  border border-surface-border px-4 py-2.5"
               >
                 <div className="text-[13px] min-w-0">
-                  <span className="font-medium text-ink">{r.categoryName}</span>
+                  <span className="font-semibold text-ink">{r.categoryName}</span>
                   <span
                     className={`ml-2 stat-num font-semibold ${
-                      r.amount < 0 ? "text-status-over" : "text-status-info"
+                      r.amount < 0 ? "text-status-over" : "text-accent"
                     }`}
                   >
                     {r.amount < 0 ? "−" : "+"}
@@ -112,10 +144,25 @@ export function BudgetScreen() {
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
-      {(["Needs", "Wants", "Savings"] as const).map((g) =>
-        byGroup[g].length === 0 ? null : (
-          <section key={g} className="flex flex-col gap-2.5">
-            <h3 className="section-eyebrow px-1">{g}</h3>
+      {(["Needs", "Wants", "Savings"] as const).map((g) => {
+        if (byGroup[g].length === 0) return null;
+        const groupColour =
+          g === "Needs" ? "bg-group-needs" : g === "Wants" ? "bg-group-wants" : "bg-group-savings";
+        const groupTotal = byGroup[g].reduce((s, r) => s + r.spent, 0);
+        return (
+          <section key={g} className="flex flex-col gap-3">
+            <div className="section-row px-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${groupColour}`} aria-hidden="true" />
+                <h3 className="section-title">{g}</h3>
+                <span className="text-[11px] text-ink-muted">
+                  · {byGroup[g].length} {byGroup[g].length === 1 ? "category" : "categories"}
+                </span>
+              </div>
+              <span className="text-[12px] text-ink-muted stat-num">
+                {formatGBP(groupTotal)} spent
+              </span>
+            </div>
             {byGroup[g].map((row) => (
               <CategoryRow
                 key={row.categoryId}
@@ -125,13 +172,13 @@ export function BudgetScreen() {
               />
             ))}
           </section>
-        ),
-      )}
+        );
+      })}
 
       {rows.length === 0 && (
-        <div className="card p-8 text-center">
+        <div className="card p-10 text-center">
           <p className="text-[14px] text-ink-soft">No categories for this month yet.</p>
-          <button type="button" className="btn-primary mt-4" onClick={() => setAddOpen(true)}>
+          <button type="button" className="btn-accent mt-4" onClick={() => setAddOpen(true)}>
             Add your first category
           </button>
         </div>

@@ -40,7 +40,7 @@ export function MonthSwitcher() {
   const [monthName, year] = label.split(" ");
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-2 relative">
       <button
         type="button"
         className="btn-icon"
@@ -51,21 +51,24 @@ export function MonthSwitcher() {
       </button>
       <div className="flex flex-col items-center min-w-0">
         <div className="flex items-baseline gap-1.5">
-          <span className="text-lg font-semibold tracking-tight text-ink">{monthName}</span>
-          <span className="text-sm font-medium text-ink-muted tabular-nums">{year}</span>
+          <span className="text-[19px] font-semibold tracking-tight text-ink">{monthName}</span>
+          <span className="text-[13px] font-medium text-ink-muted tabular-nums">{year}</span>
         </div>
         {!isCurrent ? (
           <button
             type="button"
             onClick={() => setSelectedMonth(currentMonth())}
-            className="text-[11px] font-medium text-status-info hover:underline underline-offset-2
+            className="text-[11px] font-medium text-accent hover:underline underline-offset-2
               tracking-tight mt-0.5"
           >
             Jump to current
           </button>
         ) : (
-          <span className="text-[11px] font-medium text-ink-muted tracking-wider uppercase mt-0.5">
-            This month
+          <span
+            className="text-[10px] font-semibold text-accent tracking-widest uppercase
+              mt-0.5"
+          >
+            Now
           </span>
         )}
       </div>

@@ -22,40 +22,50 @@ export function FlowScreen() {
   const unassigned = flow.nodes.find((n) => n.id === "unassigned")?.amount ?? 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card p-4">
-        <h2 className="text-sm font-semibold text-ink-soft">{monthLabel(month)} flow</h2>
+    <div className="flex flex-col gap-6">
+      <section className="card-hero p-6">
+        <span className="section-eyebrow">{monthLabel(month)} · income flow</span>
         {flow.totalIncome <= 0 ? (
-          <p className="text-sm text-ink-muted mt-2">
+          <p className="text-[14px] text-ink-soft mt-3 leading-snug">
             Set this month's income on Home to see where the money is going.
           </p>
         ) : (
-          <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-            <div>
-              <div className="text-ink-muted">Income</div>
-              <div className="font-semibold tabular-nums">{formatGBP(flow.totalIncome)}</div>
+          <>
+            <div className="mt-2">
+              <h2 className="text-display-xl text-balance-gradient stat-num">
+                {formatGBP(flow.totalIncome)}
+              </h2>
             </div>
-            <div>
-              <div className="text-ink-muted">Allocated</div>
-              <div className="font-semibold tabular-nums">{formatGBP(allocated)}</div>
+            <div className="mt-5 pt-4 border-t border-surface-border grid grid-cols-2 gap-4">
+              <div>
+                <div className="section-eyebrow text-ink-muted">Allocated</div>
+                <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+                  {formatGBP(allocated)}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="section-eyebrow text-ink-muted">Not yet assigned</div>
+                <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+                  {formatGBP(unassigned)}
+                </div>
+              </div>
             </div>
-            <div>
-              <div className="text-ink-muted">Not yet assigned</div>
-              <div className="font-semibold tabular-nums">{formatGBP(unassigned)}</div>
-            </div>
-          </div>
+          </>
         )}
       </section>
 
-      <section className="card p-2">
-        <FlowDiagram graph={flow} />
+      <section className="px-1">
+        <div className="section-row mb-4">
+          <h2 className="section-title">Flow</h2>
+        </div>
+        <div className="card p-4">
+          <FlowDiagram graph={flow} />
+        </div>
+        <p className="text-[11px] text-ink-muted mt-3 px-1 leading-snug">
+          Ribbon thickness reflects amount. Needs and Wants use what was spent;
+          Savings uses the larger of budget or activities.
+        </p>
       </section>
-
-      <p className="text-xs text-ink-muted px-1">
-        Ribbon thickness reflects amount. Categories with zero spend are hidden.
-        Savings entries flow into the Savings group; unbudgeted income lands in
-        "Not yet assigned".
-      </p>
     </div>
   );
 }

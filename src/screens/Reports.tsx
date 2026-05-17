@@ -110,24 +110,25 @@ export function ReportsScreen() {
   const byId = new Map(effective.categories.map((c) => [c.id, c]));
 
   return (
-    <div className="flex flex-col gap-4">
-      <section className="card p-5 print:hidden">
-        <span className="section-eyebrow">Report range</span>
-        <div className="mt-3 grid grid-cols-4 gap-1 p-1 rounded-xl bg-surface-sunken">
+    <div className="flex flex-col gap-6">
+      <section className="card-hero p-6 print:hidden">
+        <span className="section-eyebrow">Range</span>
+        <div
+          className="mt-3 grid grid-cols-4 gap-1 p-1 rounded-2xl bg-surface-sunken
+            border border-surface-border/60"
+        >
           {([1, 3, 6, 12] as const).map((n) => {
             const active = span === n;
             return (
               <button
                 key={n}
                 type="button"
-                className={`text-[13px] font-semibold py-2 rounded-lg transition ${
-                  active
-                    ? "bg-surface-card text-ink shadow-sm"
-                    : "text-ink-muted hover:text-ink"
+                className={`text-[13px] font-semibold py-2 rounded-xl transition ${
+                  active ? "pill-active" : "text-ink-muted hover:text-ink"
                 }`}
                 onClick={() => setSpan(n)}
               >
-                {n === 1 ? "1 mo" : `${n} mo`}
+                {n === 1 ? "1 month" : `${n} months`}
               </button>
             );
           })}
@@ -138,9 +139,9 @@ export function ReportsScreen() {
         </p>
       </section>
 
-      <section className="card p-5 print:hidden">
-        <span className="section-eyebrow">Export</span>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+      <section className="px-1 print:hidden">
+        <h2 className="section-title mb-3">Export</h2>
+        <div className="grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" onClick={exportTransactionsCsv}>
             Transactions CSV
           </button>
@@ -148,13 +149,13 @@ export function ReportsScreen() {
             Monthly summary CSV
           </button>
           <button type="button" className="btn-secondary" onClick={exportCategoriesCsv}>
-            Category breakdown CSV
+            Categories CSV
           </button>
-          <button type="button" className="btn-primary" onClick={printStatement}>
+          <button type="button" className="btn-accent" onClick={printStatement}>
             Print / Save as PDF
           </button>
         </div>
-        <p className="text-[12px] text-ink-muted mt-2 leading-snug">
+        <p className="text-[11px] text-ink-muted mt-2 leading-snug">
           "Save as PDF" uses your browser's print dialog — the statement below is what gets printed.
         </p>
       </section>

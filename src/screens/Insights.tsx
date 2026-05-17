@@ -15,10 +15,10 @@ export function InsightsScreen() {
   const [tab, setTab] = useState<Tab>("savings");
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6">
       <div
-        className="card p-1 grid grid-cols-3 gap-1 print:hidden bg-surface-sunken/60
-          border-surface-border/70"
+        className="p-1 grid grid-cols-3 gap-1 print:hidden rounded-2xl bg-surface-sunken
+          border border-surface-border/60"
         role="tablist"
         aria-label="Insights sub-navigation"
       >
@@ -32,11 +32,7 @@ export function InsightsScreen() {
               aria-selected={active}
               onClick={() => setTab(t.id)}
               className={`tap text-[13px] font-semibold rounded-xl py-2.5 transition
-                ${
-                  active
-                    ? "bg-surface-card text-ink shadow-sm"
-                    : "text-ink-muted hover:text-ink-soft"
-                }`}
+                ${active ? "pill-active" : "text-ink-muted hover:text-ink-soft"}`}
             >
               {t.label}
             </button>
