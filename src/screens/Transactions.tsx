@@ -124,29 +124,33 @@ export function TransactionsScreen() {
                     {formatGBP(dayTotal)}
                   </span>
                 </div>
-                <ul className="flex flex-col gap-2">
+                <ul className="card overflow-hidden divide-y divide-surface-border">
                   {group.items.map((t) => {
                     const cat = categoriesById.get(t.categoryId);
+                    const groupName = cat?.group ?? "Wants";
                     return (
                       <li key={t.id}>
                         <button
                           type="button"
-                          className="card-interactive w-full text-left p-4 flex items-center
-                            justify-between gap-3"
+                          className="w-full text-left px-4 py-3.5 flex items-center gap-3
+                            transition hover:bg-surface-sunken/60 active:bg-surface-sunken/80
+                            focus-ring"
                           onClick={() => {
                             setEditing(t);
                             setOpen(true);
                           }}
                         >
+                          <CategoryAvatar
+                            name={cat?.name ?? "?"}
+                            group={groupName}
+                          />
                           <div className="min-w-0 flex-1">
                             <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
                               {cat?.name ?? "Unknown"}
                             </div>
-                            {t.note && (
-                              <div className="text-[12px] text-ink-muted mt-0.5 truncate">
-                                {t.note}
-                              </div>
-                            )}
+                            <div className="text-[11px] text-ink-muted truncate mt-0.5">
+                              {t.note ? t.note : groupName}
+                            </div>
                           </div>
                           <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
                             {formatGBP(t.amount)}
@@ -322,4 +326,36 @@ function useReset(open: boolean, fn: () => void) {
     if (open) fn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+}
+
+const GROUP_VAR: Record<string, string> = {
+  Needs: "--c-group-needs",
+  Wants: "--c-group-wants",
+  Savings: "--c-group-savings",
+};
+
+function categoryInitials(name: string): string {
+  const cleaned = name.trim();
+  if (!cleaned) return "?";
+  const parts = cleaned.split(/\s+/);
+  if (parts.length === 1) return cleaned.slice(0, 2).toUpperCase();
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+function CategoryAvatar({ name, group }: { name: string; group: string }) {
+  const varName = GROUP_VAR[group] ?? "--c-ink-faint";
+  return (
+    <div
+      className="relative w-10 h-10 rounded-full flex items-center justify-center
+        flex-shrink-0 text-[12px] font-bold tracking-tight"
+      style={{
+        background: `rgb(var(${varName}) / 0.14)`,
+        color: `rgb(var(${varName}))`,
+        boxShadow: `inset 0 0 0 1px rgb(var(${varName}) / 0.18)`,
+      }}
+      aria-hidden="true"
+    >
+      {categoryInitials(name)}
+    </div>
+  );
 }

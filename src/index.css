@@ -66,6 +66,107 @@
   color-scheme: light;
 }
 
+/*
+ * Liquid — a "liquid glass" dark variant. Cosmic deep base with vivid
+ * radial colour bleed in the background; surfaces become translucent
+ * glass plates with bright edge highlights. Reads as more atmospheric
+ * and premium than the standard dark.
+ */
+[data-theme="liquid"] {
+  --c-surface: 4 6 16;
+  --c-surface-card: 18 22 40;
+  --c-surface-sunken: 26 30 52;
+  --c-surface-border: 80 86 132;
+  --c-surface-overlay: 252 252 255;
+
+  --c-ink: 245 247 255;
+  --c-ink-soft: 200 206 230;
+  --c-ink-muted: 138 144 178;
+  --c-ink-faint: 90 96 128;
+
+  --c-accent: 184 184 255;
+  --c-accent-soft: 40 38 90;
+  --c-accent-strong: 134 132 252;
+
+  --c-status-ok: 80 232 196;
+  --c-status-ok-soft: 14 56 48;
+  --c-status-warn: 255 200 96;
+  --c-status-warn-soft: 64 44 14;
+  --c-status-over: 255 132 168;
+  --c-status-over-soft: 76 30 50;
+  --c-status-info: 184 184 255;
+  --c-status-info-soft: 40 38 90;
+
+  --c-group-needs: 96 200 252;
+  --c-group-wants: 220 170 255;
+  --c-group-savings: 80 232 196;
+
+  /* Glass surface — inner light + ambient depth + faint outer glow. */
+  --shadow-card:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+    inset 0 -1px 0 0 rgb(255 255 255 / 0.03),
+    0 2px 6px 0 rgb(0 0 0 / 0.4),
+    0 20px 48px -16px rgb(var(--c-accent) / 0.08);
+  --shadow-elevated:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+    inset 0 -1px 0 0 rgb(255 255 255 / 0.04),
+    0 8px 24px -8px rgb(0 0 0 / 0.5),
+    0 32px 64px -16px rgb(var(--c-accent) / 0.16);
+  --shadow-pop:
+    0 32px 80px -16px rgb(0 0 0 / 0.7),
+    0 8px 24px -8px rgb(var(--c-accent) / 0.2);
+
+  --ring-focus: 0 0 0 3px rgb(var(--c-accent) / 0.42);
+
+  --gradient-hero:
+    radial-gradient(120% 100% at 0% 0%, rgb(var(--c-accent) / 0.28), transparent 55%),
+    radial-gradient(120% 100% at 100% 100%, rgb(var(--c-group-savings) / 0.18), transparent 55%),
+    radial-gradient(80% 60% at 50% 100%, rgb(var(--c-group-wants) / 0.12), transparent 60%),
+    linear-gradient(180deg, rgb(var(--c-surface-card) / 0.7) 0%, rgb(var(--c-surface-card) / 0.5) 100%);
+  --gradient-balance:
+    linear-gradient(120deg,
+      rgb(255 255 255) 0%,
+      rgb(var(--c-accent)) 50%,
+      rgb(var(--c-group-savings)) 100%);
+
+  color-scheme: dark;
+}
+
+/* Glass card treatment is only applied in the liquid theme. */
+[data-theme="liquid"] .card {
+  background: rgb(var(--c-surface-card) / 0.55);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border-color: rgb(255 255 255 / 0.08);
+}
+[data-theme="liquid"] .card-hero {
+  background: var(--gradient-hero);
+  backdrop-filter: blur(36px) saturate(200%);
+  -webkit-backdrop-filter: blur(36px) saturate(200%);
+  border-color: rgb(255 255 255 / 0.12);
+}
+[data-theme="liquid"] .card-glass {
+  background: rgb(var(--c-surface-card) / 0.45);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-color: rgb(255 255 255 / 0.1);
+}
+[data-theme="liquid"] body {
+  background: rgb(var(--c-surface));
+  background-image:
+    radial-gradient(45% 35% at 20% 10%, rgb(var(--c-accent) / 0.28), transparent 60%),
+    radial-gradient(40% 30% at 85% 25%, rgb(var(--c-group-savings) / 0.2), transparent 60%),
+    radial-gradient(55% 40% at 50% 95%, rgb(var(--c-group-wants) / 0.18), transparent 60%),
+    radial-gradient(30% 20% at 90% 80%, rgb(var(--c-group-needs) / 0.12), transparent 60%);
+  background-attachment: fixed;
+}
+[data-theme="liquid"] .input-base {
+  background: rgb(var(--c-surface-card) / 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-color: rgb(255 255 255 / 0.08);
+}
+
 [data-theme="dark"] {
   /* Deep indigo-black with a hint of violet — not a flat grey. */
   --c-surface: 9 10 18;

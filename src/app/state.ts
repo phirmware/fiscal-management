@@ -22,7 +22,7 @@ export interface BudgetReallocation {
   delta: number;
 }
 
-export type ThemePreference = "light" | "dark" | "system";
+export type ThemePreference = "light" | "dark" | "liquid" | "system";
 
 export interface UiState {
   selectedMonth: Month;

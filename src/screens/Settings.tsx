@@ -70,13 +70,21 @@ export function SettingsScreen() {
         <h2 className="section-title">Appearance</h2>
         <p className="text-[12px] text-ink-muted mt-1">Theme preference for this device.</p>
         <div
-          className="mt-4 grid grid-cols-3 gap-1 p-1 rounded-2xl bg-surface-sunken
+          className="mt-4 grid grid-cols-4 gap-1 p-1 rounded-2xl bg-surface-sunken
             border border-surface-border/60"
           role="radiogroup"
           aria-label="Theme"
         >
-          {(["light", "dark", "system"] as ThemePreference[]).map((opt) => {
+          {(["light", "dark", "liquid", "system"] as ThemePreference[]).map((opt) => {
             const active = themePref === opt;
+            const label =
+              opt === "light"
+                ? "Light"
+                : opt === "dark"
+                  ? "Dark"
+                  : opt === "liquid"
+                    ? "Liquid"
+                    : "System";
             return (
               <button
                 key={opt}
@@ -84,15 +92,18 @@ export function SettingsScreen() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => setTheme(opt)}
-                className={`text-[13px] font-semibold py-2.5 rounded-xl transition ${
+                className={`text-[12px] font-semibold py-2.5 rounded-xl transition ${
                   active ? "pill-active" : "text-ink-muted hover:text-ink"
                 }`}
               >
-                {opt === "light" ? "Light" : opt === "dark" ? "Dark" : "System"}
+                {label}
               </button>
             );
           })}
         </div>
+        <p className="text-[11px] text-ink-muted mt-2 leading-snug">
+          Liquid is a glassy dark variant with vivid colour bleed — best on OLED screens.
+        </p>
       </section>
 
       <section className="card p-5">
