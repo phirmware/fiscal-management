@@ -10,6 +10,18 @@ export interface ReleaseAck {
   month: Month;
 }
 
+/**
+ * A one-month adjustment to a category's effective budget. Lives outside the
+ * engine's BudgetState so the baseline MonthlyBudget records (which drive the
+ * next-month prefill) stay unchanged. Multiple reallocations for the same
+ * (categoryId, month) are additive — they sum.
+ */
+export interface BudgetReallocation {
+  categoryId: string;
+  month: Month;
+  delta: number;
+}
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export interface UiState {
@@ -24,6 +36,7 @@ export interface AppState {
   budget: BudgetState;
   overspendAcks: OverspendAck[];
   releaseAcks: ReleaseAck[];
+  reallocations: BudgetReallocation[];
   ui: UiState;
 }
 
@@ -48,6 +61,7 @@ export function emptyAppState(now: Date = new Date()): AppState {
     },
     overspendAcks: [],
     releaseAcks: [],
+    reallocations: [],
     ui: {
       selectedMonth: currentMonth(now),
       lastUsedCategoryId: null,

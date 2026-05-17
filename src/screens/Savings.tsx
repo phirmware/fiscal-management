@@ -3,6 +3,7 @@ import { computeMonth, resolveType } from "../engine.js";
 import { cumulativeSavings, savingsThisMonth } from "../app/derived.js";
 import { savingsTrend } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
 import { monthLabel, nextMonth, prevMonth } from "../app/utils/month.js";
 import type { Month } from "../types.js";
@@ -16,24 +17,27 @@ function addMonths(month: Month, delta: number): Month {
 }
 
 export function SavingsScreen() {
-  const budget = useAppStore((s) => s.budget);
+  const { effective } = useBudgetView();
   const month = useAppStore((s) => s.ui.selectedMonth);
   const setSelectedScreen = useAppStore((s) => s.setSelectedScreen);
 
   const [trendRange, setTrendRange] = useState<6 | 12 | 24>(12);
   const trendFrom = addMonths(month, -(trendRange - 1));
   const trend = useMemo(
-    () => savingsTrend(budget, trendFrom, month),
-    [budget, trendFrom, month],
+    () => savingsTrend(effective, trendFrom, month),
+    [effective, trendFrom, month],
   );
 
-  const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
-  const monthNet = useMemo(() => savingsThisMonth(budget, monthSummary), [budget, monthSummary]);
-  const cumulative = useMemo(() => cumulativeSavings(budget, month), [budget, month]);
+  const monthSummary = useMemo(() => computeMonth(effective, month), [effective, month]);
+  const monthNet = useMemo(
+    () => savingsThisMonth(effective, monthSummary),
+    [effective, monthSummary],
+  );
+  const cumulative = useMemo(() => cumulativeSavings(effective, month), [effective, month]);
 
   const savingsCategories = useMemo(
-    () => budget.categories.filter((c) => !c.archived && c.group === "Savings"),
-    [budget.categories],
+    () => effective.categories.filter((c) => !c.archived && c.group === "Savings"),
+    [effective.categories],
   );
 
   const rowsForCategories = useMemo(() => {

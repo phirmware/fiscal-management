@@ -52,6 +52,7 @@ export function normaliseAppState(input: unknown): AppState {
     },
     overspendAcks: src.overspendAcks ?? [],
     releaseAcks: src.releaseAcks ?? [],
+    reallocations: src.reallocations ?? [],
     ui: {
       selectedMonth: src.ui?.selectedMonth ?? base.ui.selectedMonth,
       lastUsedCategoryId: src.ui?.lastUsedCategoryId ?? null,

@@ -2,18 +2,19 @@ import { useMemo } from "react";
 import { computeMonth } from "../engine.js";
 import { buildFlow } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { monthLabel } from "../app/utils/month.js";
 import { formatGBP } from "../app/utils/money.js";
 import { FlowDiagram } from "../components/FlowDiagram.js";
 
 export function FlowScreen() {
-  const budget = useAppStore((s) => s.budget);
+  const { effective } = useBudgetView();
   const month = useAppStore((s) => s.ui.selectedMonth);
 
   const flow = useMemo(() => {
-    const m = computeMonth(budget, month);
-    return buildFlow(budget, m);
-  }, [budget, month]);
+    const m = computeMonth(effective, month);
+    return buildFlow(effective, m);
+  }, [effective, month]);
 
   const allocated = flow.nodes
     .filter((n) => n.column === 1 && n.id !== "unassigned")

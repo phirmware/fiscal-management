@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { computeMonth } from "../engine.js";
 import { categoryRows, reallocationDonors } from "../app/derived.js";
 import type { OverspendRow } from "../app/derived.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { useAppStore } from "../app/store.js";
 import { formatGBP } from "../app/utils/money.js";
 import { Modal } from "./Modal.js";
@@ -55,7 +56,7 @@ function ChoiceCard({
 }
 
 export function ReallocationDialog({ row, month, onClose }: Props) {
-  const budget = useAppStore((s) => s.budget);
+  const { effective, source } = useBudgetView();
   const acks = useAppStore((s) => s.overspendAcks);
   const reallocate = useAppStore((s) => s.reallocateFromCategory);
   const cover = useAppStore((s) => s.coverFromUnallocated);
@@ -66,10 +67,10 @@ export function ReallocationDialog({ row, month, onClose }: Props) {
 
   const donors = useMemo(() => {
     if (!row) return [];
-    const m = computeMonth(budget, month);
-    const rows = categoryRows(budget, m, acks, month);
+    const m = computeMonth(effective, month);
+    const rows = categoryRows(effective, source, m, acks, month);
     return reallocationDonors(rows, row.categoryId, row.amount);
-  }, [budget, acks, month, row]);
+  }, [effective, source, acks, month, row]);
 
   if (!row) return null;
 

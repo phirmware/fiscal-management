@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { computeMonth, computeSavings } from "../engine.js";
 import { rangeSummary } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
 import { downloadCsv, toCsv } from "../app/utils/csv.js";
 import { monthLabel, monthsBetween, nextMonth, prevMonth } from "../app/utils/month.js";
@@ -15,35 +16,38 @@ function addMonths(month: Month, delta: number): Month {
 }
 
 export function ReportsScreen() {
-  const budget = useAppStore((s) => s.budget);
+  const { effective } = useBudgetView();
   const month = useAppStore((s) => s.ui.selectedMonth);
   const [span, setSpan] = useState<1 | 3 | 6 | 12>(1);
   const fromMonth = addMonths(month, -(span - 1));
 
-  const summary = useMemo(() => rangeSummary(budget, fromMonth, month), [budget, fromMonth, month]);
+  const summary = useMemo(
+    () => rangeSummary(effective, fromMonth, month),
+    [effective, fromMonth, month],
+  );
 
   const monthBreakdowns = useMemo(() => {
     const months = monthsBetween(fromMonth, month);
     return months.map((m) => {
-      const ms = computeMonth(budget, m);
-      const sav = computeSavings(budget, m);
+      const ms = computeMonth(effective, m);
+      const sav = computeSavings(effective, m);
       return { month: m, summary: ms, savings: sav };
     });
-  }, [budget, fromMonth, month]);
+  }, [effective, fromMonth, month]);
 
   const txnCount = useMemo(() => {
     let count = 0;
-    for (const t of budget.transactions) {
+    for (const t of effective.transactions) {
       const tm = t.date.slice(0, 7);
       if (tm >= fromMonth && tm <= month) count++;
     }
     return count;
-  }, [budget.transactions, fromMonth, month]);
+  }, [effective.transactions, fromMonth, month]);
 
   function exportTransactionsCsv() {
     const headers = ["date", "category", "type", "group", "amount", "note"];
-    const byId = new Map(budget.categories.map((c) => [c.id, c]));
-    const rows = budget.transactions
+    const byId = new Map(effective.categories.map((c) => [c.id, c]));
+    const rows = effective.transactions
       .filter((t) => {
         const tm = t.date.slice(0, 7);
         return tm >= fromMonth && tm <= month;
@@ -79,7 +83,7 @@ export function ReportsScreen() {
 
   function exportCategoriesCsv() {
     const headers = ["month", "category", "type", "group", "budgeted", "spent", "carryIn", "available"];
-    const byId = new Map(budget.categories.map((c) => [c.id, c]));
+    const byId = new Map(effective.categories.map((c) => [c.id, c]));
     const rows: (string | number)[][] = [];
     for (const b of monthBreakdowns) {
       for (const r of b.summary.categories) {
@@ -103,7 +107,7 @@ export function ReportsScreen() {
     window.print();
   }
 
-  const byId = new Map(budget.categories.map((c) => [c.id, c]));
+  const byId = new Map(effective.categories.map((c) => [c.id, c]));
 
   return (
     <div className="flex flex-col gap-4">

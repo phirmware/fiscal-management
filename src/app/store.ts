@@ -79,6 +79,8 @@ interface AppStore extends AppState {
   ) => void;
   acknowledgeRelease: (categoryId: string, month: Month) => void;
 
+  clearReallocations: (categoryId: string, month: Month) => void;
+
   completeOnboarding: () => void;
   setTheme: (theme: ThemePreference) => void;
 
@@ -109,21 +111,6 @@ function upsertBudget(
   return next;
 }
 
-function changeBudget(
-  budgets: MonthlyBudget[],
-  categoryId: string,
-  month: Month,
-  delta: number,
-): MonthlyBudget[] {
-  const idx = budgets.findIndex((b) => b.categoryId === categoryId && b.month === month);
-  if (idx === -1) {
-    return [...budgets, { categoryId, month, amount: delta }];
-  }
-  const current = budgets[idx]!;
-  const next = budgets.slice();
-  next[idx] = { ...current, amount: current.amount + delta };
-  return next;
-}
 
 function upsertIncome(
   income: IncomeEntry[],
@@ -239,6 +226,11 @@ export const useAppStore = create<AppStore>()(
     setBudget: (categoryId, month, amount) =>
       set((s) => ({
         budget: { ...s.budget, budgets: upsertBudget(s.budget.budgets, categoryId, month, amount) },
+        // Explicitly setting a budget for a cell supersedes any reallocations
+        // applied to it — the user is declaring "this is the budget".
+        reallocations: s.reallocations.filter(
+          (r) => !(r.categoryId === categoryId && r.month === month),
+        ),
       })),
 
     addTransaction: ({ categoryId, date, amount, note }) => {
@@ -303,18 +295,22 @@ export const useAppStore = create<AppStore>()(
       })),
 
     reallocateFromCategory: (donorId, recipientId, month, amount) => {
+      // Reallocations live in their own collection so the next month's prefill
+      // still sees the baseline budget, not the post-fix amount.
       if (amount <= 0) return;
-      set((s) => {
-        let budgets = changeBudget(s.budget.budgets, donorId, month, -amount);
-        budgets = changeBudget(budgets, recipientId, month, amount);
-        return { budget: { ...s.budget, budgets } };
-      });
+      set((s) => ({
+        reallocations: [
+          ...s.reallocations,
+          { categoryId: donorId, month, delta: -amount },
+          { categoryId: recipientId, month, delta: amount },
+        ],
+      }));
     },
 
     coverFromUnallocated: (categoryId, month, amount) => {
       if (amount <= 0) return;
       set((s) => ({
-        budget: { ...s.budget, budgets: changeBudget(s.budget.budgets, categoryId, month, amount) },
+        reallocations: [...s.reallocations, { categoryId, month, delta: amount }],
       }));
     },
 
@@ -338,7 +334,7 @@ export const useAppStore = create<AppStore>()(
     sendReleaseToCategory: (convertedCategoryId, recipientId, month, amount) => {
       if (amount === 0) return;
       set((s) => ({
-        budget: { ...s.budget, budgets: changeBudget(s.budget.budgets, recipientId, month, amount) },
+        reallocations: [...s.reallocations, { categoryId: recipientId, month, delta: amount }],
         releaseAcks: s.releaseAcks.some(
           (a) => a.categoryId === convertedCategoryId && a.month === month,
         )
@@ -357,6 +353,13 @@ export const useAppStore = create<AppStore>()(
         return { releaseAcks: [...s.releaseAcks, ack] };
       }),
 
+    clearReallocations: (categoryId, month) =>
+      set((s) => ({
+        reallocations: s.reallocations.filter(
+          (r) => !(r.categoryId === categoryId && r.month === month),
+        ),
+      })),
+
     completeOnboarding: () => set((s) => ({ ui: { ...s.ui, hasOnboarded: true } })),
     setTheme: (theme) => set((s) => ({ ui: { ...s.ui, theme } })),
 
@@ -367,6 +370,7 @@ export const useAppStore = create<AppStore>()(
         budget: s.budget,
         overspendAcks: s.overspendAcks,
         releaseAcks: s.releaseAcks,
+        reallocations: s.reallocations,
         ui: s.ui,
       };
       return exportAppStateJson(snapshot);
@@ -379,6 +383,7 @@ export const useAppStore = create<AppStore>()(
         budget: next.budget,
         overspendAcks: next.overspendAcks,
         releaseAcks: next.releaseAcks,
+        reallocations: next.reallocations,
         ui: next.ui,
       });
     },
@@ -391,6 +396,7 @@ export const useAppStore = create<AppStore>()(
         budget: fresh.budget,
         overspendAcks: fresh.overspendAcks,
         releaseAcks: fresh.releaseAcks,
+        reallocations: fresh.reallocations,
         ui: fresh.ui,
         selectedScreen: "home",
       });
@@ -404,6 +410,7 @@ useAppStore.subscribe(
     budget: s.budget,
     overspendAcks: s.overspendAcks,
     releaseAcks: s.releaseAcks,
+    reallocations: s.reallocations,
     ui: s.ui,
   }),
   (slice) => {
@@ -414,6 +421,7 @@ useAppStore.subscribe(
       a.budget === b.budget &&
       a.overspendAcks === b.overspendAcks &&
       a.releaseAcks === b.releaseAcks &&
+      a.reallocations === b.reallocations &&
       a.ui === b.ui,
   },
 );

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { computeMonth } from "../engine.js";
 import { categoryRows, reallocationDonors } from "../app/derived.js";
 import type { ReleaseEntry } from "../app/insights.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { useAppStore } from "../app/store.js";
 import { formatGBP } from "../app/utils/money.js";
 import { Modal } from "./Modal.js";
@@ -54,7 +55,7 @@ function ChoiceCard({
 }
 
 export function ReleaseDialog({ entry, onClose }: Props) {
-  const budget = useAppStore((s) => s.budget);
+  const { effective, source } = useBudgetView();
   const acks = useAppStore((s) => s.overspendAcks);
   const sendRelease = useAppStore((s) => s.sendReleaseToCategory);
   const acknowledgeRelease = useAppStore((s) => s.acknowledgeRelease);
@@ -63,10 +64,10 @@ export function ReleaseDialog({ entry, onClose }: Props) {
 
   const candidates = useMemo(() => {
     if (!entry) return [];
-    const m = computeMonth(budget, entry.month);
-    const rows = categoryRows(budget, m, acks, entry.month);
+    const m = computeMonth(effective, entry.month);
+    const rows = categoryRows(effective, source, m, acks, entry.month);
     return reallocationDonors(rows, entry.categoryId, Number.NEGATIVE_INFINITY);
-  }, [entry, budget, acks]);
+  }, [entry, effective, source, acks]);
 
   if (!entry) return null;
 

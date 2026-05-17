@@ -5,6 +5,7 @@ import type { CategoryRow as CategoryRowData, OverspendRow } from "../app/derive
 import { unresolvedReleases } from "../app/insights.js";
 import type { ReleaseEntry } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
 import { CategoryRow } from "../components/CategoryRow.js";
 import { OverspendPrompt } from "../components/OverspendPrompt.js";
@@ -16,7 +17,7 @@ import { parseMoneyInput } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
 
 export function BudgetScreen() {
-  const budget = useAppStore((s) => s.budget);
+  const { effective, source } = useBudgetView();
   const acks = useAppStore((s) => s.overspendAcks);
   const month = useAppStore((s) => s.ui.selectedMonth);
   const addCategory = useAppStore((s) => s.addCategory);
@@ -24,15 +25,15 @@ export function BudgetScreen() {
   const setBudget = useAppStore((s) => s.setBudget);
   const releaseAcks = useAppStore((s) => s.releaseAcks);
 
-  const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
+  const monthSummary = useMemo(() => computeMonth(effective, month), [effective, month]);
   const rows = useMemo(
-    () => categoryRows(budget, monthSummary, acks, month),
-    [budget, monthSummary, acks, month],
+    () => categoryRows(effective, source, monthSummary, acks, month),
+    [effective, source, monthSummary, acks, month],
   );
   const unresolved = unresolvedOverspends(rows);
   const releases = useMemo(
-    () => unresolvedReleases(budget, month, releaseAcks),
-    [budget, month, releaseAcks],
+    () => unresolvedReleases(effective, month, releaseAcks),
+    [effective, month, releaseAcks],
   );
 
   const [overspendFor, setOverspendFor] = useState<OverspendRow | null>(null);

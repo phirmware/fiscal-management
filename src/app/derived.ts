@@ -7,6 +7,7 @@ import type {
   Month,
   MonthSummary,
 } from "../types.js";
+import type { BudgetSource } from "./effectiveBudget.js";
 import type { OverspendAck } from "./state.js";
 import { isAcked } from "./state.js";
 import { nextMonth } from "./utils/month.js";
@@ -178,19 +179,23 @@ export function categoryStatus(input: {
 
 /**
  * Returns the prefill that should drive the input for (categoryId, month).
- * - `null` ⇢ a MonthlyBudget record exists for this month; no prefill applies.
- * - `{ amount, sourceMonth: Month }` ⇢ no record, prefilled from a prior month.
- * - `{ amount: 0, sourceMonth: null }` ⇢ no record, no prior month found.
+ * Uses *baseline* budgets only — reallocations are one-month adjustments and
+ * are deliberately ignored as a prefill source so a fix in month M doesn't
+ * leak into M+1's prefilled budget.
+ *
+ * - `null` ⇢ a baseline budget or a reallocation exists for this month; no prefill.
+ * - `{ amount, sourceMonth: Month }` ⇢ no record, prefilled from a prior baseline.
+ * - `{ amount: 0, sourceMonth: null }` ⇢ no record, no prior baseline found.
  */
 export function findPrefillBudget(
-  budget: BudgetState,
+  source: BudgetSource,
   categoryId: string,
   month: Month,
 ): PrefillResult | null {
   let best: { amount: number; month: Month } | null = null;
   let recordExists = false;
 
-  for (const b of budget.budgets) {
+  for (const b of source.baseline) {
     if (b.categoryId !== categoryId) continue;
     if (b.month === month) {
       recordExists = true;
@@ -200,6 +205,16 @@ export function findPrefillBudget(
     if (!best || b.month > best.month) best = { amount: b.amount, month: b.month };
   }
 
+  // A reallocation for this month also counts as "set" — no prefill needed.
+  if (!recordExists) {
+    for (const r of source.reallocations) {
+      if (r.categoryId === categoryId && r.month === month) {
+        recordExists = true;
+        break;
+      }
+    }
+  }
+
   if (recordExists) return null;
   if (!best) return { amount: 0, sourceMonth: null };
   return { amount: best.amount, sourceMonth: best.month };
@@ -207,6 +222,7 @@ export function findPrefillBudget(
 
 export function categoryRows(
   state: BudgetState,
+  source: BudgetSource,
   monthSummary: MonthSummary,
   acks: OverspendAck[],
   month: Month,
@@ -219,7 +235,7 @@ export function categoryRows(
     const cat = byId.get(r.categoryId);
     if (!cat) continue;
 
-    const prefill = findPrefillBudget(state, r.categoryId, month);
+    const prefill = findPrefillBudget(source, r.categoryId, month);
     const displayBudgeted = prefill ? prefill.amount : r.budgeted;
     const displayAvailable =
       r.type === "Pot"

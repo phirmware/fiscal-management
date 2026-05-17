@@ -16,6 +16,11 @@ import {
   savingsThisMonth,
   unresolvedOverspends,
 } from "./derived.js";
+import type { BudgetSource } from "./effectiveBudget.js";
+
+function srcOf(s: BudgetState): BudgetSource {
+  return { baseline: s.budgets, reallocations: [] };
+}
 
 const M = "2026-05";
 const PREV = "2026-04";
@@ -120,14 +125,14 @@ describe("derived helpers", () => {
   it("overspends flags categories with negative display-available", () => {
     const s = baseState();
     const m = computeMonth(s, M);
-    const rows = categoryRows(s, m, [], M);
+    const rows = categoryRows(s, srcOf(s), m, [], M);
     const all = overspends(rows);
     expect(all).toHaveLength(1);
     expect(all[0]!.categoryId).toBe("groceries");
     expect(all[0]!.amount).toBe(40);
     expect(all[0]!.acknowledged).toBe(false);
 
-    const ackedRows = categoryRows(s, m, [{ categoryId: "groceries", month: M }], M);
+    const ackedRows = categoryRows(s, srcOf(s), m, [{ categoryId: "groceries", month: M }], M);
     expect(overspends(ackedRows)[0]!.acknowledged).toBe(true);
     expect(unresolvedOverspends(ackedRows)).toHaveLength(0);
   });
@@ -185,7 +190,7 @@ describe("derived helpers", () => {
 
   it("reallocationDonors lists rows with enough display-available", () => {
     const s = baseState();
-    const rows = categoryRows(s, computeMonth(s, M), [], M);
+    const rows = categoryRows(s, srcOf(s), computeMonth(s, M), [], M);
     const donors = reallocationDonors(rows, "groceries", 40);
     expect(donors.map((d) => d.categoryId)).toContain("fun");
     expect(donors.map((d) => d.categoryId)).not.toContain("groceries");
@@ -229,13 +234,13 @@ describe("budget prefill", () => {
 
   it("findPrefillBudget returns null when a record exists for the month", () => {
     const s = withPriorBudgets();
-    expect(findPrefillBudget(s, "rent", PREV)).toBeNull();
+    expect(findPrefillBudget(srcOf(s), "rent", PREV)).toBeNull();
   });
 
   it("findPrefillBudget returns the most recent prior amount when no record exists", () => {
     const s = withPriorBudgets();
-    expect(findPrefillBudget(s, "rent", M)).toEqual({ amount: 800, sourceMonth: PREV });
-    expect(findPrefillBudget(s, "fun", M)).toEqual({ amount: 50, sourceMonth: PRIOR });
+    expect(findPrefillBudget(srcOf(s), "rent", M)).toEqual({ amount: 800, sourceMonth: PREV });
+    expect(findPrefillBudget(srcOf(s), "fun", M)).toEqual({ amount: 50, sourceMonth: PRIOR });
   });
 
   it("findPrefillBudget returns 0 with no source when there is no prior history", () => {
@@ -247,13 +252,13 @@ describe("budget prefill", () => {
       archived: false,
       typeSegments: [{ fromMonth: PRIOR, type: "Limit" }],
     });
-    expect(findPrefillBudget(s, "phone", M)).toEqual({ amount: 0, sourceMonth: null });
+    expect(findPrefillBudget(srcOf(s), "phone", M)).toEqual({ amount: 0, sourceMonth: null });
   });
 
   it("categoryRows shows the prefilled amount and source month", () => {
     const s = withPriorBudgets();
     const m = computeMonth(s, M);
-    const rows = categoryRows(s, m, [], M);
+    const rows = categoryRows(s, srcOf(s), m, [], M);
     const rent = rows.find((r) => r.categoryId === "rent")!;
     expect(rent.budgeted).toBe(800);
     expect(rent.prefillSourceMonth).toBe(PREV);
@@ -274,8 +279,8 @@ describe("budget prefill", () => {
   it("explicit zero record suppresses prefill", () => {
     const s = withPriorBudgets();
     s.budgets.push({ categoryId: "rent", month: M, amount: 0 });
-    expect(findPrefillBudget(s, "rent", M)).toBeNull();
-    const rows = categoryRows(s, computeMonth(s, M), [], M);
+    expect(findPrefillBudget(srcOf(s), "rent", M)).toBeNull();
+    const rows = categoryRows(s, srcOf(s), computeMonth(s, M), [], M);
     const rent = rows.find((r) => r.categoryId === "rent")!;
     expect(rent.budgeted).toBe(0);
     expect(rent.prefillSourceMonth).toBeNull();
@@ -284,7 +289,7 @@ describe("budget prefill", () => {
   it("editing an earlier month does not rewrite a later month that has its own record", () => {
     const s = withPriorBudgets();
     s.budgets.find((b) => b.categoryId === "rent" && b.month === PRIOR)!.amount = 999;
-    expect(findPrefillBudget(s, "rent", PREV)).toBeNull();
+    expect(findPrefillBudget(srcOf(s), "rent", PREV)).toBeNull();
     const m = computeMonth(s, PREV);
     expect(m.totalBudgeted).toBe(800);
   });

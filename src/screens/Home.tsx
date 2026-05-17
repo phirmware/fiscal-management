@@ -11,6 +11,7 @@ import {
   unresolvedOverspends,
 } from "../app/derived.js";
 import { useAppStore } from "../app/store.js";
+import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
 import { IncomeBreakdown } from "../components/IncomeBreakdown.js";
 import { Modal } from "../components/Modal.js";
@@ -60,26 +61,29 @@ function GroupComparisonRow({
 }
 
 export function HomeScreen() {
-  const budget = useAppStore((s) => s.budget);
+  const { effective, source } = useBudgetView();
   const acks = useAppStore((s) => s.overspendAcks);
   const month = useAppStore((s) => s.ui.selectedMonth);
   const setIncome = useAppStore((s) => s.setIncome);
 
-  const monthSummary = useMemo(() => computeMonth(budget, month), [budget, month]);
+  const monthSummary = useMemo(() => computeMonth(effective, month), [effective, month]);
   const rows = useMemo(
-    () => categoryRows(budget, monthSummary, acks, month),
-    [budget, monthSummary, acks, month],
+    () => categoryRows(effective, source, monthSummary, acks, month),
+    [effective, source, monthSummary, acks, month],
   );
-  const breakdown = useMemo(() => monthBreakdown(budget, monthSummary), [budget, monthSummary]);
-  const totals = useMemo(() => groupTotals(budget, monthSummary), [budget, monthSummary]);
+  const breakdown = useMemo(
+    () => monthBreakdown(effective, monthSummary),
+    [effective, monthSummary],
+  );
+  const totals = useMemo(() => groupTotals(effective, monthSummary), [effective, monthSummary]);
   const benchmark = fiftyThirtyTwentyBenchmark(monthSummary.income);
   const unresolved = unresolvedOverspends(rows);
   const savedThisMonth = useMemo(
-    () => savingsThisMonth(budget, monthSummary),
-    [budget, monthSummary],
+    () => savingsThisMonth(effective, monthSummary),
+    [effective, monthSummary],
   );
-  const savedCumulative = useMemo(() => cumulativeSavings(budget, month), [budget, month]);
-  const hasSavingsCategories = useMemo(() => savingsCategoryIds(budget).size > 0, [budget]);
+  const savedCumulative = useMemo(() => cumulativeSavings(effective, month), [effective, month]);
+  const hasSavingsCategories = useMemo(() => savingsCategoryIds(effective).size > 0, [effective]);
 
   const [incomeOpen, setIncomeOpen] = useState(false);
   const [draftIncome, setDraftIncome] = useState<string>(String(monthSummary.income || ""));
