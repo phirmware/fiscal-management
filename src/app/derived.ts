@@ -18,6 +18,10 @@ export interface MonthBreakdown {
   income: number;
   /** Budget for Needs + Wants categories only. */
   spendingBudget: number;
+  /** Σ spent across Needs + Wants categories this month. */
+  spendingSpent: number;
+  /** spendingBudget − spendingSpent. Can go negative if you've overshot. */
+  leftToSpend: number;
   /** Sum of budgets for Savings-tagged categories. */
   savingsAllocated: number;
   /** Net savings activity this month: Σ (budgeted − spent) for Savings categories. */
@@ -146,15 +150,35 @@ export function cumulativeSavings(state: BudgetState, throughMonth: Month): numb
   return total;
 }
 
+/**
+ * Σ spent across Needs + Wants categories this month.
+ *
+ * Excludes Savings categories: a "deposit" or "withdrawal" against a savings pot
+ * isn't day-to-day spend, so it shouldn't reduce the "left to spend" figure.
+ */
+export function spendingSpent(state: BudgetState, monthSummary: MonthSummary): number {
+  const savingsIds = savingsCategoryIds(state);
+  let total = 0;
+  for (const r of monthSummary.categories) {
+    if (savingsIds.has(r.categoryId)) continue;
+    total += r.spent;
+  }
+  return total;
+}
+
 export function monthBreakdown(
   state: BudgetState,
   monthSummary: MonthSummary,
 ): MonthBreakdown {
   const allocated = savingsAllocated(state, monthSummary);
   const net = savingsThisMonth(state, monthSummary);
+  const spendBudget = monthSummary.totalBudgeted - allocated;
+  const spent = spendingSpent(state, monthSummary);
   return {
     income: monthSummary.income,
-    spendingBudget: monthSummary.totalBudgeted - allocated,
+    spendingBudget: spendBudget,
+    spendingSpent: spent,
+    leftToSpend: spendBudget - spent,
     savingsAllocated: allocated,
     savingsThisMonth: net,
     notYetAssigned: notYetAssigned(monthSummary),

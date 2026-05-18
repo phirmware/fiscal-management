@@ -472,6 +472,14 @@ body {
   .bg-hero {
     background: var(--gradient-hero);
   }
+  /* Scroll horizontally without a visible scrollbar (chip ribbons, tab rows). */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Subtle modal entrance — prefers-reduced-motion respected. */

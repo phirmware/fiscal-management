@@ -91,6 +91,8 @@ describe("derived helpers", () => {
     expect(breakdown).toEqual({
       income: 2000,
       spendingBudget: 1200, // 800 + 300 + 100 (Needs + Wants)
+      spendingSpent: 1180, // rent 800 + groceries 340 + fun 40 (excludes Savings)
+      leftToSpend: 20, // 1200 − 1180
       savingsAllocated: 200, // ef budget
       savingsThisMonth: 200, // ef budgeted - spent
       notYetAssigned: 600,

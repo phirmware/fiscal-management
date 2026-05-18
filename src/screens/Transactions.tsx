@@ -14,6 +14,25 @@ function todayIso(): string {
   return `${y}-${m}-${day}`;
 }
 
+function friendlyDayLabel(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const today = new Date();
+  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const targetMid = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((todayMid - targetMid) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays > 1 && diffDays < 7) {
+    return d.toLocaleDateString("en-GB", { weekday: "long" });
+  }
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 export function TransactionsScreen() {
   const budget = useAppStore((s) => s.budget);
   const month = useAppStore((s) => s.ui.selectedMonth);
@@ -51,14 +70,20 @@ export function TransactionsScreen() {
       map.get(t.date)!.push(t);
     }
     for (const [date, items] of map) {
-      const d = new Date(date);
-      const label = isNaN(d.getTime())
-        ? date
-        : d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-      groups.push({ date, label, items });
+      groups.push({ date, label: friendlyDayLabel(date), items });
     }
     return groups;
   }, [list]);
+
+  // Counts per category for the filter chips
+  const countsByCat = useMemo(() => {
+    const counts = new Map<string, number>();
+    const monthList = budget.transactions.filter((t) => monthFromDate(t.date) === month);
+    for (const t of monthList) {
+      counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
+    }
+    return counts;
+  }, [budget.transactions, month]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -84,23 +109,47 @@ export function TransactionsScreen() {
         </div>
         <div className="text-[12px] text-ink-muted mt-1">
           {list.length} {list.length === 1 ? "entry" : "entries"}
+          {filterCat !== "all" && (
+            <>
+              {" "}· filtered to{" "}
+              <span className="text-ink-soft font-medium">
+                {categoriesById.get(filterCat)?.name ?? "unknown"}
+              </span>
+            </>
+          )}
         </div>
-
-        {budget.categories.length > 0 && (
-          <select
-            className="input-base mt-5"
-            value={filterCat}
-            onChange={(e) => setFilterCat(e.target.value)}
-          >
-            <option value="all">All categories</option>
-            {budget.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        )}
       </section>
+
+      {budget.categories.length > 0 && (
+        <div
+          className="-mx-4 px-4 overflow-x-auto no-scrollbar"
+          role="tablist"
+          aria-label="Filter by category"
+        >
+          <div className="flex gap-2 pb-1 min-w-min">
+            <FilterChip
+              label="All"
+              count={list.length}
+              active={filterCat === "all"}
+              onClick={() => setFilterCat("all")}
+            />
+            {budget.categories.map((c) => {
+              const count = countsByCat.get(c.id) ?? 0;
+              if (count === 0 && filterCat !== c.id) return null;
+              return (
+                <FilterChip
+                  key={c.id}
+                  label={c.name}
+                  count={count}
+                  active={filterCat === c.id}
+                  group={c.group}
+                  onClick={() => setFilterCat(c.id)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {budget.categories.length === 0 ? (
         <div className="card p-10 text-center">
@@ -108,19 +157,35 @@ export function TransactionsScreen() {
         </div>
       ) : list.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="text-[14px] text-ink-soft">Nothing logged this month yet.</p>
+          <div
+            className="w-12 h-12 rounded-full bg-accent/10 text-accent
+              flex items-center justify-center mx-auto mb-3 text-xl"
+            aria-hidden="true"
+          >
+            ✦
+          </div>
+          <p className="text-[14px] font-semibold text-ink">Nothing logged yet</p>
+          <p className="text-[12px] text-ink-muted mt-1">
+            Tap <span className="font-semibold text-ink-soft">+ Add</span> to log your first spend.
+          </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
           {groupedByDate.map((group) => {
             const dayTotal = group.items.reduce((s, t) => s + t.amount, 0);
             return (
               <section key={group.date}>
-                <div className="section-row mb-2 px-1">
-                  <span className="text-[12px] font-semibold text-ink-soft tracking-tight">
+                <div
+                  className="sticky top-0 z-[1] -mx-4 px-4 py-2
+                    bg-surface/85 backdrop-blur-md
+                    flex items-baseline justify-between gap-3
+                    after:content-[''] after:absolute after:inset-x-4 after:bottom-0
+                    after:h-px after:bg-surface-border/50"
+                >
+                  <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
                     {group.label}
                   </span>
-                  <span className="text-[11px] text-ink-muted stat-num">
+                  <span className="text-[11px] text-ink-muted stat-num font-medium">
                     {formatGBP(dayTotal)}
                   </span>
                 </div>
@@ -146,14 +211,16 @@ export function TransactionsScreen() {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
-                              {cat?.name ?? "Unknown"}
+                              {t.note?.trim() ? t.note : (cat?.name ?? "Unknown")}
                             </div>
                             <div className="text-[11px] text-ink-muted truncate mt-0.5">
-                              {t.note ? t.note : groupName}
+                              {t.note?.trim() ? cat?.name ?? "Unknown" : groupName}
                             </div>
                           </div>
-                          <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
-                            {formatGBP(t.amount)}
+                          <div className="text-right">
+                            <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
+                              −{formatGBP(t.amount)}
+                            </div>
                           </div>
                         </button>
                       </li>
@@ -333,6 +400,56 @@ const GROUP_VAR: Record<string, string> = {
   Wants: "--c-group-wants",
   Savings: "--c-group-savings",
 };
+
+function FilterChip({
+  label,
+  count,
+  active,
+  group,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  group?: string;
+  onClick: () => void;
+}) {
+  const varName = group ? GROUP_VAR[group] ?? "--c-accent" : "--c-accent";
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-semibold
+        tracking-tight transition active:scale-[0.96] focus-ring border
+        flex items-center gap-1.5
+        ${
+          active
+            ? "text-ink"
+            : "bg-surface-card text-ink-soft border-surface-border hover:text-ink"
+        }`}
+      style={
+        active
+          ? {
+              background: `rgb(var(${varName}) / 0.14)`,
+              borderColor: `rgb(var(${varName}) / 0.35)`,
+              color: `rgb(var(${varName}))`,
+            }
+          : undefined
+      }
+    >
+      <span>{label}</span>
+      <span
+        className={`stat-num text-[11px] font-bold ${
+          active ? "" : "text-ink-muted"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
 
 function categoryInitials(name: string): string {
   const cleaned = name.trim();

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { computeMonth } from "../engine.js";
-import { categoryRows, unresolvedOverspends } from "../app/derived.js";
+import { categoryRows, monthBreakdown, unresolvedOverspends } from "../app/derived.js";
 import type { CategoryRow as CategoryRowData, OverspendRow } from "../app/derived.js";
 import { unresolvedReleases } from "../app/insights.js";
 import type { ReleaseEntry } from "../app/insights.js";
@@ -29,6 +29,10 @@ export function BudgetScreen() {
   const rows = useMemo(
     () => categoryRows(effective, source, monthSummary, acks, month),
     [effective, source, monthSummary, acks, month],
+  );
+  const breakdown = useMemo(
+    () => monthBreakdown(effective, monthSummary),
+    [effective, monthSummary],
   );
   const unresolved = unresolvedOverspends(rows);
   const releases = useMemo(
@@ -71,17 +75,28 @@ export function BudgetScreen() {
             {formatGBP(Math.abs(monthSummary.unallocated))}
           </h2>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-4 pt-4 border-t border-surface-border">
+        <div className="mt-5 grid grid-cols-3 gap-3 pt-4 border-t border-surface-border">
           <div>
             <div className="section-eyebrow text-ink-muted">Budgeted</div>
-            <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+            <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
               {formatGBP(monthSummary.totalBudgeted)}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-center">
             <div className="section-eyebrow text-ink-muted">Spent</div>
-            <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
+            <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
               {formatGBP(monthSummary.totalSpent)}
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="section-eyebrow text-ink-muted">Left to spend</div>
+            <div
+              className={`mt-1.5 text-[16px] font-semibold stat-num ${
+                breakdown.leftToSpend < 0 ? "text-status-over" : "text-status-ok"
+              }`}
+            >
+              {breakdown.leftToSpend < 0 ? "−" : ""}
+              {formatGBP(Math.abs(breakdown.leftToSpend))}
             </div>
           </div>
         </div>

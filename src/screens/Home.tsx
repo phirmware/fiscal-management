@@ -129,6 +129,12 @@ export function HomeScreen() {
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
+      <LeftToSpendCard
+        leftToSpend={breakdown.leftToSpend}
+        spendingBudget={breakdown.spendingBudget}
+        spendingSpent={breakdown.spendingSpent}
+      />
+
       <section className="px-1">
         <div className="section-row mb-4">
           <div>
@@ -233,5 +239,127 @@ export function HomeScreen() {
         </p>
       </Modal>
     </div>
+  );
+}
+
+function LeftToSpendCard({
+  leftToSpend,
+  spendingBudget,
+  spendingSpent,
+}: {
+  leftToSpend: number;
+  spendingBudget: number;
+  spendingSpent: number;
+}) {
+  // Don't render if there's no Needs/Wants budget to speak of.
+  if (spendingBudget <= 0 && spendingSpent <= 0) return null;
+
+  const usedFraction =
+    spendingBudget > 0 ? spendingSpent / spendingBudget : spendingSpent > 0 ? 1.1 : 0;
+  const fillPct = Math.min(100, Math.max(0, usedFraction * 100));
+  const isOver = leftToSpend < 0;
+  const isFull = !isOver && usedFraction >= 1;
+  const isClose = !isOver && !isFull && usedFraction >= 0.75;
+
+  const statusVar = isOver
+    ? "--c-status-over"
+    : isFull
+      ? "--c-status-full"
+      : isClose
+        ? "--c-status-warn"
+        : "--c-status-ok";
+  const statusLabel = isOver
+    ? "Over budget"
+    : isFull
+      ? "Budget fully used"
+      : isClose
+        ? "Running low"
+        : "On track";
+
+  return (
+    <section className="card p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
+            Left to spend this month
+          </div>
+          <p className="text-[11px] text-ink-muted mt-1 leading-snug">
+            Needs + Wants budgets, minus what you've spent.
+          </p>
+        </div>
+        <span
+          className="pill gap-1.5 px-2 py-0.5"
+          style={{
+            background: `rgb(var(${statusVar}) / 0.14)`,
+            color: `rgb(var(${statusVar}))`,
+          }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: `rgb(var(${statusVar}))` }}
+            aria-hidden="true"
+          />
+          {statusLabel}
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-baseline gap-3">
+        <span
+          className={`text-display-xl stat-num ${isOver ? "text-status-over" : "text-ink"}`}
+        >
+          {isOver ? "−" : ""}
+          {formatGBP(Math.abs(leftToSpend))}
+        </span>
+        {spendingBudget > 0 && (
+          <span className="text-[12px] text-ink-muted stat-num">
+            of {formatGBP(spendingBudget)}
+          </span>
+        )}
+      </div>
+
+      <div
+        className="mt-4 relative h-2.5 rounded-full bg-surface-sunken overflow-hidden"
+        style={
+          isFull || isOver
+            ? { boxShadow: `inset 0 0 0 1px rgb(var(${statusVar}) / 0.18)` }
+            : undefined
+        }
+      >
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+          style={{
+            width: `${fillPct}%`,
+            background: `linear-gradient(90deg,
+              rgb(var(${statusVar}) / 0.78) 0%,
+              rgb(var(${statusVar})) 100%)`,
+            boxShadow:
+              isFull || isOver
+                ? `0 0 0 1px rgb(var(${statusVar}) / 0.35), 0 4px 12px -2px rgb(var(${statusVar}) / 0.4)`
+                : undefined,
+          }}
+          aria-hidden="true"
+        />
+        {fillPct > 0 && (
+          <div
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 55%)",
+              width: `${fillPct}%`,
+            }}
+            aria-hidden="true"
+          />
+        )}
+      </div>
+
+      <div className="mt-3 flex items-baseline justify-between text-[12px]">
+        <span className="text-ink-muted stat-num">
+          <span className="font-semibold text-ink">{formatGBP(spendingSpent)}</span> spent
+        </span>
+        <span className="text-ink-muted stat-num">
+          {Math.round(Math.min(100, usedFraction * 100))}% used
+        </span>
+      </div>
+    </section>
   );
 }
