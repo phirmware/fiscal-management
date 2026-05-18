@@ -22,14 +22,12 @@ function GroupComparisonRow({
   label,
   actual,
   benchmark,
-  dotColour,
-  fillColour,
+  groupVar,
 }: {
   label: string;
   actual: number;
   benchmark: number;
-  dotColour: string;
-  fillColour: string;
+  groupVar: string;
 }) {
   const ratio = benchmark <= 0 ? 0 : actual / benchmark;
   const fillPct = Math.min(100, Math.max(0, ratio * 100));
@@ -39,28 +37,43 @@ function GroupComparisonRow({
     <div>
       <div className="flex items-baseline justify-between">
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${dotColour}`} aria-hidden="true" />
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ background: `rgb(var(${groupVar}))` }}
+            aria-hidden="true"
+          />
           <span className="text-[13px] font-semibold text-ink tracking-tight">{label}</span>
         </div>
         <span className="stat-num text-[13px] text-ink-soft">
           <span className="font-semibold text-ink">{formatGBP(actual)}</span>{" "}
           <span className="text-ink-muted">/ {formatGBP(benchmark)}</span>
           {overshootPct > 0 && (
-            <span className="ml-1.5 text-status-warn font-semibold">
+            <span className="ml-1.5 text-status-over font-semibold">
               +{Math.round(overshootPct)}%
             </span>
           )}
         </span>
       </div>
-      <div className="mt-2 h-1.5 w-full rounded-full bg-surface-sunken overflow-hidden flex">
+      <div className="mt-2 relative h-2 w-full rounded-full bg-surface-sunken overflow-hidden flex">
         <div
-          className={`h-full ${fillColour} rounded-full transition-[width] duration-500 ease-out`}
-          style={{ width: `${fillPct}%` }}
+          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{
+            width: `${fillPct}%`,
+            background: `linear-gradient(90deg,
+              rgb(var(${groupVar}) / 0.75) 0%,
+              rgb(var(${groupVar})) 100%)`,
+          }}
         />
         {overshootDisplay > 0 && (
           <div
-            className="h-full bg-status-warn/70"
-            style={{ width: `${overshootDisplay * 0.5}%` }}
+            className="h-full"
+            style={{
+              width: `${overshootDisplay * 0.5}%`,
+              background: `linear-gradient(90deg,
+                rgb(var(--c-status-over) / 0.8) 0%,
+                rgb(var(--c-status-over)) 100%)`,
+              boxShadow: "0 0 0 1px rgb(var(--c-status-over) / 0.35)",
+            }}
             title={`${Math.round(overshootPct)}% over benchmark`}
           />
         )}
@@ -130,22 +143,19 @@ export function HomeScreen() {
             label="Needs"
             actual={totals.needs}
             benchmark={benchmark.needs}
-            dotColour="bg-group-needs"
-            fillColour="bg-group-needs"
+            groupVar="--c-group-needs"
           />
           <GroupComparisonRow
             label="Wants"
             actual={totals.wants}
             benchmark={benchmark.wants}
-            dotColour="bg-group-wants"
-            fillColour="bg-group-wants"
+            groupVar="--c-group-wants"
           />
           <GroupComparisonRow
             label="Savings"
             actual={totals.savings}
             benchmark={benchmark.savings}
-            dotColour="bg-group-savings"
-            fillColour="bg-group-savings"
+            groupVar="--c-group-savings"
           />
         </div>
       </section>

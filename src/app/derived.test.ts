@@ -151,11 +151,38 @@ describe("derived helpers", () => {
       categoryStatus({
         type: "Limit",
         budgeted: 100,
+        spent: 50,
+        carryIn: 0,
+        available: 50,
+      }),
+    ).toBe("ok");
+    expect(
+      categoryStatus({
+        type: "Limit",
+        budgeted: 100,
+        spent: 80,
+        carryIn: 0,
+        available: 20,
+      }),
+    ).toBe("close");
+    expect(
+      categoryStatus({
+        type: "Limit",
+        budgeted: 100,
         spent: 95,
         carryIn: 0,
         available: 5,
       }),
     ).toBe("close");
+    expect(
+      categoryStatus({
+        type: "Limit",
+        budgeted: 100,
+        spent: 100,
+        carryIn: 0,
+        available: 0,
+      }),
+    ).toBe("full");
     expect(
       categoryStatus({
         type: "Limit",

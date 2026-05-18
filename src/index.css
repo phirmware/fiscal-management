@@ -27,10 +27,12 @@
   --c-accent-soft: 235 235 254;
   --c-accent-strong: 67 64 199;
 
-  --c-status-ok: 13 148 110;
-  --c-status-ok-soft: 220 250 235;
-  --c-status-warn: 202 121 8;
+  --c-status-ok: 16 156 110;
+  --c-status-ok-soft: 218 248 232;
+  --c-status-warn: 196 132 14;
   --c-status-warn-soft: 254 240 199;
+  --c-status-full: 226 96 38;
+  --c-status-full-soft: 253 226 210;
   --c-status-over: 219 39 78;
   --c-status-over-soft: 254 226 232;
   --c-status-info: 90 88 226;
@@ -92,6 +94,8 @@
   --c-status-ok-soft: 14 56 48;
   --c-status-warn: 255 200 96;
   --c-status-warn-soft: 64 44 14;
+  --c-status-full: 255 140 80;
+  --c-status-full-soft: 72 32 14;
   --c-status-over: 255 132 168;
   --c-status-over-soft: 76 30 50;
   --c-status-info: 184 184 255;
@@ -188,6 +192,8 @@
   --c-status-ok-soft: 14 50 36;
   --c-status-warn: 251 191 36;
   --c-status-warn-soft: 58 39 12;
+  --c-status-full: 252 138 80;
+  --c-status-full-soft: 64 32 16;
   --c-status-over: 251 113 133;
   --c-status-over-soft: 64 24 36;
   --c-status-info: 174 173 255;
@@ -476,6 +482,9 @@ body {
   .modal-backdrop-enter {
     animation: backdropIn 180ms ease-out;
   }
+  .pulse-now > span:first-child {
+    animation: nowPulse 2.4s ease-in-out infinite;
+  }
   @keyframes modalIn {
     from {
       transform: translateY(16px);
@@ -492,6 +501,14 @@ body {
     }
     to {
       opacity: 1;
+    }
+  }
+  @keyframes nowPulse {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgb(var(--c-status-ok) / 0.55);
+    }
+    50% {
+      box-shadow: 0 0 0 5px rgb(var(--c-status-ok) / 0);
     }
   }
 }

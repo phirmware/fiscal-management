@@ -104,8 +104,8 @@ export function BottomNav() {
                 <button
                   type="button"
                   onClick={() => setSelectedScreen(item.id)}
-                  className="tap w-full flex flex-col items-center justify-center gap-1 py-1.5
-                    rounded-2xl transition"
+                  className="tap w-full relative flex flex-col items-center justify-center gap-0.5
+                    py-1.5 rounded-2xl transition"
                   aria-current={active ? "page" : undefined}
                   aria-label={item.label}
                 >
@@ -113,9 +113,14 @@ export function BottomNav() {
                     className={`flex items-center justify-center transition-all
                       ${
                         active
-                          ? "px-3.5 py-1 rounded-full bg-accent/15 text-accent"
-                          : "px-2 py-1 text-ink-muted"
+                          ? "px-3.5 py-1 rounded-full bg-accent/15 text-accent scale-105"
+                          : "px-2 py-1 text-ink-muted scale-100"
                       }`}
+                    style={
+                      active
+                        ? { boxShadow: "inset 0 0 0 1px rgb(var(--c-accent) / 0.18)" }
+                        : undefined
+                    }
                   >
                     <item.Icon className="w-[22px] h-[22px]" />
                   </span>

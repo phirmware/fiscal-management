@@ -33,13 +33,13 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
 
   return (
     <section
-      className="rounded-2xl border border-status-warn/30 bg-status-warnSoft/50 p-4"
+      className="rounded-3xl border border-status-over/25 bg-status-overSoft/40 p-5"
       role="region"
       aria-label="Categories over budget"
     >
       <div className="flex items-start gap-3">
         <div
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-status-warn/15 text-status-warn
+          className="flex-shrink-0 w-10 h-10 rounded-full bg-status-over/15 text-status-over
             flex items-center justify-center"
         >
           <AlertIcon className="w-5 h-5" />
@@ -57,15 +57,15 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
         </div>
       </div>
 
-      <ul className="mt-3 flex flex-col gap-1.5">
+      <ul className="mt-4 flex flex-col gap-2">
         {rows.map((r) => (
           <li
             key={r.categoryId}
-            className="flex items-center justify-between gap-2 rounded-xl bg-surface-card/50
-              border border-status-warn/15 px-3 py-2"
+            className="flex items-center justify-between gap-2 rounded-2xl bg-surface-card
+              border border-status-over/15 px-4 py-2.5"
           >
             <div className="text-[13px] min-w-0">
-              <span className="font-medium text-ink truncate">{r.name}</span>
+              <span className="font-semibold text-ink truncate">{r.name}</span>
               <span className="ml-2 stat-num text-status-over font-semibold">
                 −{formatGBP(r.amount)}
               </span>
@@ -73,7 +73,7 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
             <button
               type="button"
               onClick={() => setOpenFor(r)}
-              className="btn-secondary btn-sm"
+              className="btn-accent btn-sm"
             >
               Resolve
             </button>
@@ -84,7 +84,7 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
       <div className="mt-3 text-[12px]">
         <button
           type="button"
-          className="font-medium text-status-info hover:underline underline-offset-2"
+          className="font-medium text-accent hover:underline underline-offset-2"
           onClick={() => goToBudget("budget")}
         >
           See the Budget screen →

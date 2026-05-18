@@ -31,6 +31,8 @@ export default {
           okSoft: withVar("--c-status-ok-soft"),
           warn: withVar("--c-status-warn"),
           warnSoft: withVar("--c-status-warn-soft"),
+          full: withVar("--c-status-full"),
+          fullSoft: withVar("--c-status-full-soft"),
           over: withVar("--c-status-over"),
           overSoft: withVar("--c-status-over-soft"),
           info: withVar("--c-status-info"),

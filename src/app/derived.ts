@@ -12,7 +12,7 @@ import type { OverspendAck } from "./state.js";
 import { isAcked } from "./state.js";
 import { nextMonth } from "./utils/month.js";
 
-export type StatusBucket = "ok" | "close" | "over" | "empty";
+export type StatusBucket = "ok" | "close" | "full" | "over" | "empty";
 
 export interface MonthBreakdown {
   income: number;
@@ -173,7 +173,9 @@ export function categoryStatus(input: {
   const reference = input.type === "Pot" ? input.budgeted + input.carryIn : input.budgeted;
   if (reference <= 0) return input.available < 0 ? "over" : "ok";
   const usedFraction = (reference - input.available) / reference;
-  if (usedFraction >= 0.9) return "close";
+  // At/over the line but not yet overspent — distinct visual from "almost".
+  if (usedFraction >= 1) return "full";
+  if (usedFraction >= 0.75) return "close";
   return "ok";
 }
 

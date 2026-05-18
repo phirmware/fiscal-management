@@ -9,6 +9,7 @@ interface ProgressBarProps {
 const COLOURS: Record<StatusBucket, string> = {
   ok: "bg-status-ok",
   close: "bg-status-warn",
+  full: "bg-status-full",
   over: "bg-status-over",
   empty: "bg-ink-faint",
 };

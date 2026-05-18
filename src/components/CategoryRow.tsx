@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { CategoryRow as CategoryRowData } from "../app/derived.js";
+import type { CategoryRow as CategoryRowData, StatusBucket } from "../app/derived.js";
 import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
 import { useAppStore } from "../app/store.js";
 import { monthLabel } from "../app/utils/month.js";
@@ -10,25 +10,36 @@ const GROUP_BG: Record<string, string> = {
   Savings: "bg-group-savings",
 };
 
-const STATUS_DOT: Record<string, string> = {
+const STATUS_DOT: Record<StatusBucket, string> = {
   ok: "bg-status-ok",
   close: "bg-status-warn",
+  full: "bg-status-full",
   over: "bg-status-over",
   empty: "bg-ink-faint",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  ok: "On track",
-  close: "Close",
+const STATUS_LABEL: Record<StatusBucket, string> = {
+  ok: "Plenty left",
+  close: "Almost full",
+  full: "Full",
   over: "Over",
-  empty: "Empty",
+  empty: "Untracked",
 };
 
-const BAR_COLOR: Record<string, string> = {
-  ok: "bg-status-ok",
-  close: "bg-status-warn",
-  over: "bg-status-over",
-  empty: "bg-ink-faint",
+const STATUS_PILL: Record<StatusBucket, string> = {
+  ok: "bg-status-okSoft text-status-ok",
+  close: "bg-status-warnSoft text-status-warn",
+  full: "bg-status-fullSoft text-status-full",
+  over: "bg-status-overSoft text-status-over",
+  empty: "bg-surface-sunken text-ink-muted",
+};
+
+const STATUS_VAR: Record<StatusBucket, string> = {
+  ok: "--c-status-ok",
+  close: "--c-status-warn",
+  full: "--c-status-full",
+  over: "--c-status-over",
+  empty: "--c-ink-faint",
 };
 
 interface Props {
@@ -44,9 +55,10 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
 
   const isPrefilled = row.prefillSourceMonth !== null;
   const reference = row.type === "Pot" ? row.budgeted + row.carryIn : row.budgeted;
-  const usedPct =
-    reference <= 0 ? (row.spent > 0 ? 100 : 0) : Math.min(100, (row.spent / reference) * 100);
+  const rawUsedPct = reference <= 0 ? (row.spent > 0 ? 100 : 0) : (row.spent / reference) * 100;
+  const usedPct = Math.min(100, rawUsedPct);
   const groupSpine = GROUP_BG[row.group] ?? "bg-ink-faint";
+  const statusVar = STATUS_VAR[row.status];
 
   function startEdit() {
     setDraft(row.budgeted > 0 ? String(row.budgeted) : "");
@@ -60,6 +72,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
   }
 
   const availableNegative = row.available < 0;
+  const showGlow = row.status === "full" || row.status === "over";
 
   return (
     <div className="relative card overflow-hidden">
@@ -80,15 +93,15 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               {row.type} · {row.group}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span
+            className={`pill ${STATUS_PILL[row.status]} gap-1.5 px-2 py-0.5`}
+          >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[row.status] ?? ""}`}
+              className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[row.status]}`}
               aria-hidden="true"
             />
-            <span className="text-[11px] font-semibold text-ink-soft uppercase tracking-wider">
-              {STATUS_LABEL[row.status] ?? ""}
-            </span>
-          </div>
+            {STATUS_LABEL[row.status]}
+          </span>
         </div>
 
         {/* Hero: available amount */}
@@ -122,12 +135,25 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
         </div>
 
         {/* Progress bar — the visual story */}
-        <div className="mt-3 relative h-2 rounded-full bg-surface-sunken overflow-hidden">
+        <div
+          className="mt-3 relative h-2.5 rounded-full bg-surface-sunken overflow-hidden"
+          style={
+            showGlow
+              ? { boxShadow: `inset 0 0 0 1px rgb(var(${statusVar}) / 0.18)` }
+              : undefined
+          }
+        >
           <div
-            className={`h-full rounded-full transition-[width] duration-500 ease-out ${
-              BAR_COLOR[row.status] ?? "bg-ink-faint"
-            }`}
-            style={{ width: `${usedPct}%` }}
+            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+            style={{
+              width: `${usedPct}%`,
+              background: `linear-gradient(90deg,
+                rgb(var(${statusVar}) / 0.78) 0%,
+                rgb(var(${statusVar})) 100%)`,
+              boxShadow: showGlow
+                ? `0 0 0 1px rgb(var(${statusVar}) / 0.35), 0 4px 12px -2px rgb(var(${statusVar}) / 0.4)`
+                : undefined,
+            }}
             aria-hidden="true"
           />
           {/* Subtle inner highlight on the bar fill */}
@@ -136,7 +162,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               className="absolute inset-0 rounded-full pointer-events-none"
               style={{
                 background:
-                  "linear-gradient(180deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0) 50%)",
+                  "linear-gradient(180deg, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 55%)",
                 width: `${usedPct}%`,
               }}
               aria-hidden="true"

@@ -146,22 +146,49 @@ export function BudgetScreen() {
 
       {(["Needs", "Wants", "Savings"] as const).map((g) => {
         if (byGroup[g].length === 0) return null;
-        const groupColour =
-          g === "Needs" ? "bg-group-needs" : g === "Wants" ? "bg-group-wants" : "bg-group-savings";
+        const groupVar =
+          g === "Needs" ? "--c-group-needs" : g === "Wants" ? "--c-group-wants" : "--c-group-savings";
         const groupTotal = byGroup[g].reduce((s, r) => s + r.spent, 0);
+        const groupBudgeted = byGroup[g].reduce((s, r) => s + r.budgeted, 0);
+        const sharePct =
+          groupBudgeted > 0 ? Math.min(100, Math.round((groupTotal / groupBudgeted) * 100)) : null;
         return (
           <section key={g} className="flex flex-col gap-3">
-            <div className="section-row px-1">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${groupColour}`} aria-hidden="true" />
-                <h3 className="section-title">{g}</h3>
+            <div
+              className="flex items-center justify-between gap-3 px-3 py-2 rounded-2xl border border-surface-border/60"
+              style={{
+                background: `linear-gradient(90deg,
+                  rgb(var(${groupVar}) / 0.10) 0%,
+                  rgb(var(${groupVar}) / 0.02) 100%)`,
+              }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: `rgb(var(${groupVar}))` }}
+                  aria-hidden="true"
+                />
+                <h3 className="text-[13px] font-semibold tracking-tight text-ink">{g}</h3>
                 <span className="text-[11px] text-ink-muted">
                   · {byGroup[g].length} {byGroup[g].length === 1 ? "category" : "categories"}
                 </span>
               </div>
-              <span className="text-[12px] text-ink-muted stat-num">
-                {formatGBP(groupTotal)} spent
-              </span>
+              <div className="text-right">
+                <div className="text-[12px] stat-num">
+                  <span className="font-semibold text-ink">{formatGBP(groupTotal)}</span>
+                  {groupBudgeted > 0 && (
+                    <span className="text-ink-muted"> / {formatGBP(groupBudgeted)}</span>
+                  )}
+                </div>
+                {sharePct !== null && (
+                  <div
+                    className="text-[10px] font-semibold uppercase tracking-widest mt-0.5"
+                    style={{ color: `rgb(var(${groupVar}))` }}
+                  >
+                    {sharePct}% used
+                  </div>
+                )}
+              </div>
             </div>
             {byGroup[g].map((row) => (
               <CategoryRow

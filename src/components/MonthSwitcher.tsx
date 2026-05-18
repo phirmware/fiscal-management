@@ -58,16 +58,20 @@ export function MonthSwitcher() {
           <button
             type="button"
             onClick={() => setSelectedMonth(currentMonth())}
-            className="text-[11px] font-medium text-accent hover:underline underline-offset-2
-              tracking-tight mt-0.5"
+            className="text-[11px] font-semibold text-accent hover:underline underline-offset-2
+              tracking-tight mt-0.5 inline-flex items-center gap-1"
           >
-            Jump to current
+            <span aria-hidden="true">↺</span> Jump to current
           </button>
         ) : (
           <span
-            className="text-[10px] font-semibold text-accent tracking-widest uppercase
-              mt-0.5"
+            className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase
+              tracking-[0.16em] text-accent mt-0.5 pulse-now"
           >
+            <span
+              className="w-1.5 h-1.5 rounded-full bg-status-ok"
+              aria-hidden="true"
+            />
             Now
           </span>
         )}
