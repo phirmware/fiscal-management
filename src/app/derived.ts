@@ -11,6 +11,7 @@ import type { BudgetSource } from "./effectiveBudget.js";
 import type { OverspendAck } from "./state.js";
 import { isAcked } from "./state.js";
 import { nextMonth } from "./utils/month.js";
+import { roundMoney } from "./utils/money.js";
 
 export type StatusBucket = "ok" | "close" | "full" | "over" | "empty";
 
@@ -77,7 +78,7 @@ export interface PrefillResult {
 export function notYetAssigned(monthSummary: MonthSummary): number {
   // Savings now lives in categories, so the budgeted total already accounts
   // for it — no extra subtraction needed beyond engine.unallocated.
-  return monthSummary.unallocated;
+  return roundMoney(monthSummary.unallocated);
 }
 
 export function savingsCategoryIds(state: BudgetState): Set<string> {
@@ -95,7 +96,7 @@ export function savingsAllocated(state: BudgetState, monthSummary: MonthSummary)
   for (const r of monthSummary.categories) {
     if (ids.has(r.categoryId)) total += r.budgeted;
   }
-  return total;
+  return roundMoney(total);
 }
 
 /**
@@ -116,7 +117,7 @@ export function savingsThisMonth(state: BudgetState, monthSummary: MonthSummary)
   for (const r of monthSummary.categories) {
     if (ids.has(r.categoryId)) total += Math.max(r.budgeted, r.spent);
   }
-  return total;
+  return roundMoney(total);
 }
 
 function earliestRelevantMonth(state: BudgetState, ids: Set<string>): Month | null {
@@ -147,7 +148,7 @@ export function cumulativeSavings(state: BudgetState, throughMonth: Month): numb
     if (m === throughMonth) break;
     m = nextMonth(m);
   }
-  return total;
+  return roundMoney(total);
 }
 
 /**
@@ -163,7 +164,7 @@ export function spendingSpent(state: BudgetState, monthSummary: MonthSummary): n
     if (savingsIds.has(r.categoryId)) continue;
     total += r.spent;
   }
-  return total;
+  return roundMoney(total);
 }
 
 export function monthBreakdown(
@@ -172,13 +173,13 @@ export function monthBreakdown(
 ): MonthBreakdown {
   const allocated = savingsAllocated(state, monthSummary);
   const net = savingsThisMonth(state, monthSummary);
-  const spendBudget = monthSummary.totalBudgeted - allocated;
+  const spendBudget = roundMoney(monthSummary.totalBudgeted - allocated);
   const spent = spendingSpent(state, monthSummary);
   return {
-    income: monthSummary.income,
+    income: roundMoney(monthSummary.income),
     spendingBudget: spendBudget,
     spendingSpent: spent,
-    leftToSpend: spendBudget - spent,
+    leftToSpend: roundMoney(spendBudget - spent),
     savingsAllocated: allocated,
     savingsThisMonth: net,
     notYetAssigned: notYetAssigned(monthSummary),
@@ -192,11 +193,15 @@ export function categoryStatus(input: {
   available: number;
   type: CategoryMonthResult["type"];
 }): StatusBucket {
-  if (input.budgeted === 0 && input.spent === 0 && input.carryIn === 0) return "empty";
-  if (input.available < 0) return "over";
-  const reference = input.type === "Pot" ? input.budgeted + input.carryIn : input.budgeted;
-  if (reference <= 0) return input.available < 0 ? "over" : "ok";
-  const usedFraction = (reference - input.available) / reference;
+  const budgeted = roundMoney(input.budgeted);
+  const spent = roundMoney(input.spent);
+  const carryIn = roundMoney(input.carryIn);
+  const available = roundMoney(input.available);
+  if (budgeted === 0 && spent === 0 && carryIn === 0) return "empty";
+  if (available < 0) return "over";
+  const reference = roundMoney(input.type === "Pot" ? budgeted + carryIn : budgeted);
+  if (reference <= 0) return available < 0 ? "over" : "ok";
+  const usedFraction = (reference - available) / reference;
   // At/over the line but not yet overspent — distinct visual from "almost".
   if (usedFraction >= 1) return "full";
   if (usedFraction >= 0.75) return "close";
@@ -262,15 +267,16 @@ export function categoryRows(
     if (!cat) continue;
 
     const prefill = findPrefillBudget(source, r.categoryId, month);
-    const displayBudgeted = prefill ? prefill.amount : r.budgeted;
-    const displayAvailable =
+    const displayBudgeted = roundMoney(prefill ? prefill.amount : r.budgeted);
+    const displayAvailable = roundMoney(
       r.type === "Pot"
         ? r.carryIn + displayBudgeted - r.spent
-        : displayBudgeted - r.spent;
+        : displayBudgeted - r.spent,
+    );
     const status = categoryStatus({
       budgeted: displayBudgeted,
-      spent: r.spent,
-      carryIn: r.carryIn,
+      spent: roundMoney(r.spent),
+      carryIn: roundMoney(r.carryIn),
       available: displayAvailable,
       type: r.type,
     });
@@ -280,8 +286,8 @@ export function categoryRows(
       name: cat.name,
       group: cat.group,
       type: r.type,
-      spent: r.spent,
-      carryIn: r.carryIn,
+      spent: roundMoney(r.spent),
+      carryIn: roundMoney(r.carryIn),
       budgeted: displayBudgeted,
       available: displayAvailable,
       status,
@@ -295,11 +301,12 @@ export function categoryRows(
 export function overspends(rows: CategoryRow[]): OverspendRow[] {
   const out: OverspendRow[] = [];
   for (const r of rows) {
-    if (r.available >= 0) continue;
+    const available = roundMoney(r.available);
+    if (available >= 0) continue;
     out.push({
       categoryId: r.categoryId,
       name: r.name,
-      amount: -r.available,
+      amount: roundMoney(-available),
       acknowledged: r.acknowledged,
     });
   }
@@ -326,18 +333,18 @@ export function groupTotals(
     else if (cat.group === "Wants") wants += r.spent;
   }
   return {
-    needs,
-    wants,
+    needs: roundMoney(needs),
+    wants: roundMoney(wants),
     // Savings actual = net savings activity from Savings categories.
-    savings: Math.max(0, savingsThisMonth(state, monthSummary)),
+    savings: roundMoney(Math.max(0, savingsThisMonth(state, monthSummary))),
   };
 }
 
 export function fiftyThirtyTwentyBenchmark(income: number): FiftyThirtyTwenty {
   return {
-    needs: income * 0.5,
-    wants: income * 0.3,
-    savings: income * 0.2,
+    needs: roundMoney(income * 0.5),
+    wants: roundMoney(income * 0.3),
+    savings: roundMoney(income * 0.2),
   };
 }
 
@@ -355,13 +362,14 @@ export function reallocationDonors(
 ): DonorCandidate[] {
   const donors: DonorCandidate[] = [];
   for (const r of rows) {
+    const available = roundMoney(r.available);
     if (r.categoryId === exceptCategoryId) continue;
-    if (r.available < minAvailable) continue;
+    if (available < minAvailable) continue;
     donors.push({
       categoryId: r.categoryId,
       name: r.name,
       group: r.group,
-      available: r.available,
+      available,
     });
   }
   donors.sort((a, b) => b.available - a.available);

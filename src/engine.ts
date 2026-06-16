@@ -9,6 +9,7 @@ import type {
   SavingsSummary,
   TypeSegment,
 } from "./types.js";
+import { roundMoney } from "./app/utils/money.js";
 
 export function prevMonth(month: Month): Month {
   const [y, m] = parseMonth(month);
@@ -62,7 +63,7 @@ function sumBudgeted(state: BudgetState, categoryId: string, month: Month): numb
   for (const b of state.budgets) {
     if (b.categoryId === categoryId && b.month === month) total += b.amount;
   }
-  return total;
+  return roundMoney(total);
 }
 
 function sumSpent(state: BudgetState, categoryId: string, month: Month): number {
@@ -72,7 +73,7 @@ function sumSpent(state: BudgetState, categoryId: string, month: Month): number 
       total += t.amount;
     }
   }
-  return total;
+  return roundMoney(total);
 }
 
 type CategoryMonthCache = Map<string, CategoryMonthResult>;
@@ -106,14 +107,14 @@ export function computeCategoryMonth(
     carryIn = prevResult.available;
   }
 
-  const available = type === "Pot" ? carryIn + budgeted - spent : budgeted - spent;
+  const available = roundMoney(type === "Pot" ? carryIn + budgeted - spent : budgeted - spent);
 
   const result: CategoryMonthResult = {
     categoryId,
     type,
     budgeted,
     spent,
-    carryIn,
+    carryIn: roundMoney(carryIn),
     available,
   };
   cache.set(key, result);
@@ -129,7 +130,7 @@ function categoryExistsAt(category: Category, month: Month): boolean {
 function incomeFor(state: BudgetState, month: Month): { income: number; incomeSet: boolean } {
   const entry = state.income.find((i) => i.month === month);
   if (!entry) return { income: 0, incomeSet: false };
-  return { income: entry.netAmount, incomeSet: true };
+  return { income: roundMoney(entry.netAmount), incomeSet: true };
 }
 
 function releasedFromConversionsFor(
@@ -150,7 +151,7 @@ function releasedFromConversionsFor(
       }
     }
   }
-  return released;
+  return roundMoney(released);
 }
 
 export function computeMonth(state: BudgetState, month: Month): MonthSummary {
@@ -170,8 +171,10 @@ export function computeMonth(state: BudgetState, month: Month): MonthSummary {
     totalBudgeted += c.budgeted;
     totalSpent += c.spent;
   }
+  totalBudgeted = roundMoney(totalBudgeted);
+  totalSpent = roundMoney(totalSpent);
 
-  const unallocated = income - totalBudgeted;
+  const unallocated = roundMoney(income - totalBudgeted);
   const releasedFromConversions = releasedFromConversionsFor(state, month, cache);
 
   return {
@@ -191,6 +194,7 @@ export function computeSavings(state: BudgetState, month: Month): SavingsSummary
   for (const e of state.savingsEntries) {
     if (e.month === month) monthTotal += e.amount;
   }
+  monthTotal = roundMoney(monthTotal);
 
   const cumulativeByAccount: Record<string, number> = {};
   for (const acc of state.savingsAccounts) {
@@ -198,11 +202,12 @@ export function computeSavings(state: BudgetState, month: Month): SavingsSummary
     for (const e of state.savingsEntries) {
       if (e.accountId === acc.id && e.month <= month) total += e.amount;
     }
-    cumulativeByAccount[acc.id] = total;
+    cumulativeByAccount[acc.id] = roundMoney(total);
   }
 
   let cumulativeTotal = 0;
   for (const v of Object.values(cumulativeByAccount)) cumulativeTotal += v;
+  cumulativeTotal = roundMoney(cumulativeTotal);
 
   return { monthTotal, cumulativeByAccount, cumulativeTotal };
 }

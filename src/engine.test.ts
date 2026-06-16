@@ -291,6 +291,19 @@ describe("carry-forward rules", () => {
     expect(noIncome.unallocated).toBe(-300);
   });
 
+  it("rounds floating-point drift out of unallocated totals", () => {
+    const state = makeState({
+      categories: [limit("a"), limit("b")],
+      budgets: [budget("a", M1, 0.1), budget("b", M1, 0.2)],
+      income: [income(M1, 0.3)],
+    });
+
+    const month = computeMonth(state, M1);
+    expect(month.totalBudgeted).toBe(0.3);
+    expect(month.unallocated).toBe(0);
+    expect(Object.is(month.unallocated, -0)).toBe(false);
+  });
+
   it("11. Savings monthly total and cumulative (including a negative withdrawal)", () => {
     const state = makeState({
       savingsAccounts: [savingsAccount("emergency", 500), savingsAccount("travel", 0)],
