@@ -135,7 +135,7 @@ export function HomeScreen() {
         spendingSpent={breakdown.spendingSpent}
       />
 
-      <section className="px-1">
+      <section className="dashboard-band">
         <div className="section-row mb-4">
           <div>
             <h2 className="section-title">Money split</h2>
@@ -144,7 +144,7 @@ export function HomeScreen() {
             </p>
           </div>
         </div>
-        <div className="card p-5 space-y-4">
+        <div className="space-y-4">
           <GroupComparisonRow
             label="Needs"
             actual={totals.needs}
@@ -166,7 +166,7 @@ export function HomeScreen() {
         </div>
       </section>
 
-      <section className="px-1">
+      <section className="dashboard-band">
         <div className="section-row mb-4">
           <div>
             <h2 className="section-title">Savings</h2>
@@ -175,27 +175,25 @@ export function HomeScreen() {
             </p>
           </div>
         </div>
-        <div className="card p-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <div className="section-eyebrow text-ink-muted">This month</div>
-              <div className="text-display-md text-ink stat-num mt-2">
-                {formatGBP(savedThisMonth)}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="section-eyebrow text-ink-muted">Cumulative</div>
-              <div className="text-display-md text-ink stat-num mt-2">
-                {formatGBP(savedCumulative)}
-              </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="section-eyebrow text-ink-muted">This month</div>
+            <div className="text-display-md text-ink stat-num mt-2">
+              {formatGBP(savedThisMonth)}
             </div>
           </div>
-          {!hasSavingsCategories && (
-            <p className="text-[12px] text-ink-muted mt-4 leading-snug">
-              No Savings categories yet. Add one from Budget → + Category and tag it Savings.
-            </p>
-          )}
+          <div className="text-right">
+            <div className="section-eyebrow text-ink-muted">Cumulative</div>
+            <div className="text-display-md text-ink stat-num mt-2">
+              {formatGBP(savedCumulative)}
+            </div>
+          </div>
         </div>
+        {!hasSavingsCategories && (
+          <p className="text-[12px] text-ink-muted mt-4 leading-snug">
+            No Savings categories yet. Add one from Budget → + Category and tag it Savings.
+          </p>
+        )}
       </section>
 
       <Modal
@@ -277,7 +275,8 @@ function LeftToSpendCard({
         : "On track";
 
   return (
-    <section className="card p-5">
+    <section className="dashboard-band">
+      <div className="absolute inset-x-5 top-0 h-1 ledger-strip opacity-60" aria-hidden="true" />
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">

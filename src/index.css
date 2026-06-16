@@ -7,63 +7,61 @@
  * with opacity modifiers (e.g. bg-status-okSoft/60).
  *
  * Palette identity:
- *   Light → warm paper-cream base, ink with the faintest violet undertone.
- *   Dark  → deep indigo-black with iris/violet accents (not a flat grey).
- *   Accent → iris violet, used as the brand colour throughout.
+ *   Light → quiet ledger-paper base with blue, teal, amber, and emerald signals.
+ *   Dark  → graphite-black with luminous cyan/green accents and warm warnings.
+ *   Liquid → glassy graphite with crisp edge highlights and restrained colour bleed.
  */
 :root {
-  --c-surface: 249 247 243;
-  --c-surface-card: 255 254 251;
-  --c-surface-sunken: 240 237 230;
-  --c-surface-border: 226 222 213;
-  --c-surface-overlay: 18 17 24;
+  --c-surface: 248 248 245;
+  --c-surface-card: 255 255 252;
+  --c-surface-sunken: 239 241 236;
+  --c-surface-border: 222 226 219;
+  --c-surface-overlay: 16 20 24;
 
-  --c-ink: 17 18 26;
-  --c-ink-soft: 60 64 80;
-  --c-ink-muted: 113 118 138;
-  --c-ink-faint: 174 178 193;
+  --c-ink: 20 24 29;
+  --c-ink-soft: 64 72 80;
+  --c-ink-muted: 112 121 130;
+  --c-ink-faint: 171 179 186;
 
-  --c-accent: 90 88 226;
-  --c-accent-soft: 235 235 254;
-  --c-accent-strong: 67 64 199;
+  --c-accent: 37 99 235;
+  --c-accent-soft: 224 238 255;
+  --c-accent-strong: 29 78 216;
 
   --c-status-ok: 16 156 110;
   --c-status-ok-soft: 218 248 232;
-  --c-status-warn: 196 132 14;
-  --c-status-warn-soft: 254 240 199;
-  --c-status-full: 226 96 38;
-  --c-status-full-soft: 253 226 210;
+  --c-status-warn: 190 121 12;
+  --c-status-warn-soft: 255 242 205;
+  --c-status-full: 207 88 43;
+  --c-status-full-soft: 255 229 215;
   --c-status-over: 219 39 78;
   --c-status-over-soft: 254 226 232;
   --c-status-info: 90 88 226;
   --c-status-info-soft: 235 235 254;
 
-  --c-group-needs: 13 110 207;
-  --c-group-wants: 168 85 247;
-  --c-group-savings: 16 165 117;
+  --c-group-needs: 14 116 144;
+  --c-group-wants: 217 119 6;
+  --c-group-savings: 5 150 105;
 
-  /* Layered card depth — hairline + ambient. */
+  /* Layered card depth: crisp hairline, ambient lift, and a soft contact shadow. */
   --shadow-card:
-    0 1px 0 0 rgb(17 18 26 / 0.03),
-    0 1px 2px 0 rgb(17 18 26 / 0.05),
-    0 6px 16px -8px rgb(17 18 26 / 0.06);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+    0 1px 2px 0 rgb(20 24 29 / 0.06),
+    0 14px 32px -22px rgb(20 24 29 / 0.22);
   --shadow-elevated:
-    0 1px 0 0 rgb(17 18 26 / 0.04),
-    0 6px 14px -4px rgb(17 18 26 / 0.08),
-    0 24px 48px -12px rgb(17 18 26 / 0.1);
+    inset 0 1px 0 0 rgb(255 255 255 / 0.96),
+    0 8px 20px -10px rgb(20 24 29 / 0.18),
+    0 28px 64px -28px rgb(20 24 29 / 0.24);
   --shadow-pop:
-    0 16px 48px -8px rgb(17 18 26 / 0.18),
-    0 6px 16px -4px rgb(17 18 26 / 0.1);
+    0 18px 48px -22px rgb(20 24 29 / 0.35),
+    0 8px 24px -18px rgb(20 24 29 / 0.24);
 
   --ring-focus: 0 0 0 3px rgb(var(--c-accent) / 0.22);
 
   /* Hero gradients — subtle, brand-tinted, never garish. */
   --gradient-hero:
-    radial-gradient(120% 100% at 0% 0%, rgb(var(--c-accent) / 0.06), transparent 50%),
-    radial-gradient(120% 100% at 100% 0%, rgb(var(--c-group-savings) / 0.05), transparent 55%),
-    linear-gradient(180deg, rgb(var(--c-surface-card)), rgb(var(--c-surface-card)));
+    linear-gradient(145deg, rgb(var(--c-surface-card)) 0%, rgb(var(--c-accent-soft) / 0.48) 54%, rgb(var(--c-surface-card)) 100%);
   --gradient-balance:
-    linear-gradient(140deg, rgb(var(--c-ink)) 0%, rgb(var(--c-ink-soft)) 90%);
+    linear-gradient(135deg, rgb(var(--c-ink)) 0%, rgb(var(--c-accent-strong)) 58%, rgb(var(--c-group-savings)) 100%);
 
   color-scheme: light;
 }
@@ -75,20 +73,20 @@
  * and premium than the standard dark.
  */
 [data-theme="liquid"] {
-  --c-surface: 4 6 16;
-  --c-surface-card: 18 22 40;
-  --c-surface-sunken: 26 30 52;
-  --c-surface-border: 80 86 132;
+  --c-surface: 5 8 10;
+  --c-surface-card: 18 24 26;
+  --c-surface-sunken: 24 32 34;
+  --c-surface-border: 71 88 88;
   --c-surface-overlay: 252 252 255;
 
-  --c-ink: 245 247 255;
-  --c-ink-soft: 200 206 230;
-  --c-ink-muted: 138 144 178;
-  --c-ink-faint: 90 96 128;
+  --c-ink: 246 250 248;
+  --c-ink-soft: 199 212 208;
+  --c-ink-muted: 132 148 145;
+  --c-ink-faint: 86 102 101;
 
-  --c-accent: 184 184 255;
-  --c-accent-soft: 40 38 90;
-  --c-accent-strong: 134 132 252;
+  --c-accent: 125 211 252;
+  --c-accent-soft: 14 49 58;
+  --c-accent-strong: 56 189 248;
 
   --c-status-ok: 80 232 196;
   --c-status-ok-soft: 14 56 48;
@@ -98,19 +96,19 @@
   --c-status-full-soft: 72 32 14;
   --c-status-over: 255 132 168;
   --c-status-over-soft: 76 30 50;
-  --c-status-info: 184 184 255;
-  --c-status-info-soft: 40 38 90;
+  --c-status-info: 125 211 252;
+  --c-status-info-soft: 14 49 58;
 
   --c-group-needs: 96 200 252;
-  --c-group-wants: 220 170 255;
+  --c-group-wants: 251 191 36;
   --c-group-savings: 80 232 196;
 
   /* Glass surface — inner light + ambient depth + faint outer glow. */
   --shadow-card:
-    inset 0 1px 0 0 rgb(255 255 255 / 0.08),
-    inset 0 -1px 0 0 rgb(255 255 255 / 0.03),
+    inset 0 1px 0 0 rgb(255 255 255 / 0.12),
+    inset 0 -1px 0 0 rgb(255 255 255 / 0.04),
     0 2px 6px 0 rgb(0 0 0 / 0.4),
-    0 20px 48px -16px rgb(var(--c-accent) / 0.08);
+    0 22px 58px -28px rgb(var(--c-accent) / 0.22);
   --shadow-elevated:
     inset 0 1px 0 0 rgb(255 255 255 / 0.12),
     inset 0 -1px 0 0 rgb(255 255 255 / 0.04),
@@ -123,15 +121,10 @@
   --ring-focus: 0 0 0 3px rgb(var(--c-accent) / 0.42);
 
   --gradient-hero:
-    radial-gradient(120% 100% at 0% 0%, rgb(var(--c-accent) / 0.28), transparent 55%),
-    radial-gradient(120% 100% at 100% 100%, rgb(var(--c-group-savings) / 0.18), transparent 55%),
-    radial-gradient(80% 60% at 50% 100%, rgb(var(--c-group-wants) / 0.12), transparent 60%),
-    linear-gradient(180deg, rgb(var(--c-surface-card) / 0.7) 0%, rgb(var(--c-surface-card) / 0.5) 100%);
+    linear-gradient(135deg, rgb(var(--c-accent) / 0.18) 0%, rgb(var(--c-surface-card) / 0.76) 42%, rgb(var(--c-group-savings) / 0.14) 100%),
+    linear-gradient(180deg, rgb(var(--c-surface-card) / 0.76) 0%, rgb(var(--c-surface-card) / 0.52) 100%);
   --gradient-balance:
-    linear-gradient(120deg,
-      rgb(255 255 255) 0%,
-      rgb(var(--c-accent)) 50%,
-      rgb(var(--c-group-savings)) 100%);
+    linear-gradient(135deg, rgb(255 255 255) 0%, rgb(var(--c-accent)) 54%, rgb(var(--c-group-savings)) 100%);
 
   color-scheme: dark;
 }
@@ -158,10 +151,9 @@
 [data-theme="liquid"] body {
   background: rgb(var(--c-surface));
   background-image:
-    radial-gradient(45% 35% at 20% 10%, rgb(var(--c-accent) / 0.28), transparent 60%),
-    radial-gradient(40% 30% at 85% 25%, rgb(var(--c-group-savings) / 0.2), transparent 60%),
-    radial-gradient(55% 40% at 50% 95%, rgb(var(--c-group-wants) / 0.18), transparent 60%),
-    radial-gradient(30% 20% at 90% 80%, rgb(var(--c-group-needs) / 0.12), transparent 60%);
+    linear-gradient(145deg, rgb(var(--c-accent) / 0.18) 0%, transparent 34%, rgb(var(--c-group-savings) / 0.12) 72%, transparent 100%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.025) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 56px);
   background-attachment: fixed;
 }
 [data-theme="liquid"] .input-base {
@@ -172,21 +164,21 @@
 }
 
 [data-theme="dark"] {
-  /* Deep indigo-black with a hint of violet — not a flat grey. */
-  --c-surface: 9 10 18;
-  --c-surface-card: 17 18 30;
-  --c-surface-sunken: 26 28 44;
-  --c-surface-border: 42 44 66;
+  /* Graphite-black with luminous accounting accents — not a flat grey. */
+  --c-surface: 8 10 12;
+  --c-surface-card: 18 22 24;
+  --c-surface-sunken: 25 31 33;
+  --c-surface-border: 45 56 58;
   --c-surface-overlay: 250 250 254;
 
-  --c-ink: 240 240 248;
-  --c-ink-soft: 184 188 206;
-  --c-ink-muted: 124 130 152;
-  --c-ink-faint: 78 82 102;
+  --c-ink: 242 246 244;
+  --c-ink-soft: 190 201 198;
+  --c-ink-muted: 123 138 136;
+  --c-ink-faint: 78 94 94;
 
-  --c-accent: 174 173 255;
-  --c-accent-soft: 36 33 70;
-  --c-accent-strong: 132 130 248;
+  --c-accent: 125 211 252;
+  --c-accent-soft: 13 42 50;
+  --c-accent-strong: 56 189 248;
 
   --c-status-ok: 52 211 153;
   --c-status-ok-soft: 14 50 36;
@@ -196,11 +188,11 @@
   --c-status-full-soft: 64 32 16;
   --c-status-over: 251 113 133;
   --c-status-over-soft: 64 24 36;
-  --c-status-info: 174 173 255;
-  --c-status-info-soft: 36 33 70;
+  --c-status-info: 125 211 252;
+  --c-status-info-soft: 13 42 50;
 
   --c-group-needs: 96 165 250;
-  --c-group-wants: 196 132 252;
+  --c-group-wants: 251 191 36;
   --c-group-savings: 52 211 153;
 
   /* Cards in dark mode read as raised glass surfaces. */
@@ -219,11 +211,10 @@
   --ring-focus: 0 0 0 3px rgb(var(--c-accent) / 0.36);
 
   --gradient-hero:
-    radial-gradient(120% 100% at 0% 0%, rgb(var(--c-accent) / 0.18), transparent 60%),
-    radial-gradient(120% 100% at 100% 100%, rgb(var(--c-group-savings) / 0.1), transparent 60%),
-    linear-gradient(180deg, rgb(var(--c-surface-card) / 1) 0%, rgb(var(--c-surface-card) / 0.95) 100%);
+    linear-gradient(135deg, rgb(var(--c-accent) / 0.14) 0%, rgb(var(--c-surface-card)) 42%, rgb(var(--c-group-savings) / 0.10) 100%),
+    linear-gradient(180deg, rgb(var(--c-surface-card)) 0%, rgb(var(--c-surface-card) / 0.94) 100%);
   --gradient-balance:
-    linear-gradient(140deg, rgb(255 255 255) 0%, rgb(var(--c-accent)) 90%);
+    linear-gradient(135deg, rgb(255 255 255) 0%, rgb(var(--c-accent)) 60%, rgb(var(--c-group-savings)) 100%);
 
   color-scheme: dark;
 }
@@ -237,18 +228,34 @@ body,
 body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: contain;
+  touch-action: manipulation;
   font-feature-settings: "cv11", "ss01", "ss03";
   text-rendering: optimizeLegibility;
   background: rgb(var(--c-surface));
   background-image:
-    radial-gradient(80% 60% at 50% 0%, rgb(var(--c-accent) / 0.04), transparent 60%);
+    linear-gradient(145deg, rgb(var(--c-accent) / 0.05) 0%, transparent 38%, rgb(var(--c-group-savings) / 0.04) 100%),
+    repeating-linear-gradient(90deg, rgb(var(--c-ink) / 0.025) 0 1px, transparent 1px 52px),
+    repeating-linear-gradient(0deg, rgb(var(--c-ink) / 0.018) 0 1px, transparent 1px 52px);
   background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(105deg, transparent 0 18%, rgb(var(--c-accent) / 0.08) 24%, transparent 34% 100%),
+    linear-gradient(252deg, transparent 0 52%, rgb(var(--c-group-savings) / 0.07) 64%, transparent 74% 100%);
+  mask-image: linear-gradient(180deg, rgb(0 0 0 / 0.88), transparent 78%);
 }
 
 [data-theme="dark"] body {
   background-image:
-    radial-gradient(60% 50% at 50% 0%, rgb(var(--c-accent) / 0.08), transparent 60%),
-    radial-gradient(50% 40% at 100% 100%, rgb(var(--c-group-savings) / 0.06), transparent 70%);
+    linear-gradient(145deg, rgb(var(--c-accent) / 0.13) 0%, transparent 34%, rgb(var(--c-group-savings) / 0.08) 100%),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.024) 0 1px, transparent 1px 52px),
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.018) 0 1px, transparent 1px 52px);
 }
 
 /* Smooth theme transitions; respects reduced-motion. */
@@ -274,13 +281,48 @@ body {
 @layer components {
   /* ---------- Surfaces ---------- */
   .card {
-    @apply bg-surface-card border border-surface-border rounded-3xl;
+    @apply bg-surface-card border border-surface-border;
+    border-radius: 18px;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.045), transparent 44%);
     box-shadow: var(--shadow-card);
   }
   .card-hero {
     @apply card relative overflow-hidden;
     background: var(--gradient-hero);
     box-shadow: var(--shadow-elevated);
+  }
+  .card-hero::before,
+  .card-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 36%),
+      linear-gradient(90deg, transparent, rgb(255 255 255 / 0.08), transparent);
+    opacity: 0.45;
+  }
+  .holo-panel {
+    position: relative;
+    isolation: isolate;
+  }
+  .holo-panel::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      linear-gradient(115deg, transparent 0 30%, rgb(var(--c-accent) / 0.16) 42%, transparent 56% 100%),
+      repeating-linear-gradient(0deg, rgb(255 255 255 / 0.04) 0 1px, transparent 1px 9px);
+    opacity: 0.34;
+    mix-blend-mode: screen;
+  }
+  .holo-panel > * {
+    position: relative;
+    z-index: 1;
   }
   .card-interactive {
     @apply card cursor-pointer;
@@ -300,7 +342,10 @@ body {
     background: rgb(var(--c-surface-card) / 0.7);
     backdrop-filter: saturate(180%) blur(24px);
     -webkit-backdrop-filter: saturate(180%) blur(24px);
-    @apply border border-surface-border rounded-3xl;
+    @apply border border-surface-border;
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
   }
 
   /* ---------- Pills / badges ---------- */
@@ -348,11 +393,12 @@ body {
 
   /* ---------- Buttons ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-2xl px-4 py-2.5
+    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5
       text-sm font-semibold tracking-tight
       transition select-none
       active:scale-[0.97] active:translate-y-px
       disabled:opacity-50 disabled:pointer-events-none;
+    border-radius: 14px;
   }
   .btn:focus-visible {
     @apply outline-none;
@@ -366,10 +412,10 @@ body {
   }
   .btn-accent {
     @apply btn text-white;
-    background: linear-gradient(135deg, rgb(var(--c-accent-strong)), rgb(var(--c-accent)));
+    background: linear-gradient(135deg, rgb(var(--c-accent-strong)), rgb(var(--c-accent)) 55%, rgb(var(--c-group-savings)));
     box-shadow:
       inset 0 1px 0 0 rgb(255 255 255 / 0.2),
-      0 4px 12px -2px rgb(var(--c-accent) / 0.4);
+      0 8px 20px -10px rgb(var(--c-accent) / 0.75);
   }
   .btn-accent:hover {
     filter: brightness(1.05);
@@ -393,13 +439,15 @@ body {
     @apply bg-surface-sunken text-ink;
   }
   .btn-sm {
-    @apply px-3 py-1.5 text-xs rounded-xl;
+    @apply px-3 py-1.5 text-xs;
+    border-radius: 12px;
   }
   .btn-icon {
-    @apply inline-flex items-center justify-center rounded-xl
+    @apply inline-flex items-center justify-center
       tap text-ink-soft transition
       hover:bg-surface-sunken hover:text-ink
       active:scale-[0.94] disabled:opacity-50 disabled:pointer-events-none;
+    border-radius: 14px;
   }
 
   /* ---------- Section headers ---------- */
@@ -436,6 +484,98 @@ body {
     color: transparent;
   }
 
+  .metric-tile {
+    @apply rounded-2xl border border-surface-border/70 bg-surface-card/55 px-3 py-3;
+    box-shadow: inset 0 1px 0 0 rgb(255 255 255 / 0.08);
+  }
+  .hero-metrics {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  .ledger-strip {
+    background:
+      linear-gradient(90deg, rgb(var(--c-accent) / 0.12), transparent 36%),
+      repeating-linear-gradient(90deg, rgb(var(--c-ink) / 0.06) 0 1px, transparent 1px 16px);
+  }
+
+  .ledger-panel {
+    @apply relative overflow-hidden border border-surface-border;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgb(var(--c-surface-card) / 0.82), rgb(var(--c-surface-card) / 0.58)),
+      linear-gradient(135deg, rgb(var(--c-accent) / 0.06), transparent 48%);
+    box-shadow: var(--shadow-card);
+  }
+  .ledger-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 34%),
+      repeating-linear-gradient(90deg, rgb(var(--c-ink) / 0.035) 0 1px, transparent 1px 44px);
+    opacity: 0.52;
+  }
+  .ledger-header {
+    @apply relative z-[1] flex items-center justify-between gap-3 px-4 py-3;
+    border-bottom: 1px solid rgb(var(--c-surface-border) / 0.62);
+  }
+  .ledger-row {
+    @apply relative z-[1] flex gap-3 px-4 py-4;
+    border-bottom: 1px solid rgb(var(--c-surface-border) / 0.58);
+    transition:
+      background-color 180ms ease,
+      transform 180ms ease;
+  }
+  .ledger-row:last-child {
+    border-bottom: 0;
+  }
+  .ledger-row:hover {
+    background-color: rgb(var(--c-surface-sunken) / 0.36);
+  }
+  .ledger-row:focus-within {
+    background-color: rgb(var(--c-accent) / 0.08);
+  }
+  .ledger-rail {
+    @apply mt-1 w-1.5 shrink-0 self-stretch rounded-full;
+    min-height: 72px;
+  }
+  .dashboard-band {
+    @apply relative overflow-hidden border border-surface-border/70 px-5 py-5;
+    border-radius: 18px;
+    background:
+      linear-gradient(180deg, rgb(var(--c-surface-card) / 0.7), rgb(var(--c-surface-card) / 0.44)),
+      linear-gradient(110deg, rgb(var(--c-accent) / 0.08), transparent 46%, rgb(var(--c-group-savings) / 0.07)),
+      repeating-linear-gradient(90deg, rgb(var(--c-ink) / 0.03) 0 1px, transparent 1px 52px);
+    box-shadow: var(--shadow-card);
+  }
+  .dashboard-band::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 34%);
+    opacity: 0.48;
+  }
+  .dashboard-band > * {
+    position: relative;
+    z-index: 1;
+  }
+  .app-chrome {
+    background: rgb(var(--c-surface) / 0.78);
+    backdrop-filter: blur(40px) saturate(180%);
+    -webkit-backdrop-filter: blur(40px) saturate(180%);
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .nav-dock {
+    background:
+      linear-gradient(180deg, rgb(var(--c-surface-card) / 0.76), rgb(var(--c-surface-card) / 0.56)),
+      linear-gradient(110deg, rgb(var(--c-accent) / 0.14), transparent 42%, rgb(var(--c-group-savings) / 0.10));
+  }
+  .thumb-rise {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+
   /* Beautiful soft pill backdrop for active tab indicators. */
   .pill-active {
     @apply bg-surface-card text-ink;
@@ -447,6 +587,27 @@ body {
     box-shadow:
       inset 0 1px 0 0 rgb(255 255 255 / 0.08),
       0 1px 2px 0 rgb(0 0 0 / 0.4);
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-metrics {
+    grid-template-columns: 1fr;
+  }
+  .ledger-row {
+    padding: 0.875rem 0.75rem;
+  }
+  .ledger-header {
+    padding: 0.625rem 0.75rem;
+  }
+  .metric-tile {
+    padding: 0.625rem 0.75rem;
+  }
+  .text-display-xl {
+    font-size: 2.45rem;
+  }
+  .text-display-md {
+    font-size: 1.45rem;
   }
 }
 
@@ -493,6 +654,9 @@ body {
   .pulse-now > span:first-child {
     animation: nowPulse 2.4s ease-in-out infinite;
   }
+  .holo-panel::after {
+    animation: dataSweep 9s linear infinite;
+  }
   @keyframes modalIn {
     from {
       transform: translateY(16px);
@@ -517,6 +681,16 @@ body {
     }
     50% {
       box-shadow: 0 0 0 5px rgb(var(--c-status-ok) / 0);
+    }
+  }
+  @keyframes dataSweep {
+    0% {
+      transform: translateX(-18%);
+      opacity: 0.24;
+    }
+    45%, 100% {
+      transform: translateX(18%);
+      opacity: 0.42;
     }
   }
 }

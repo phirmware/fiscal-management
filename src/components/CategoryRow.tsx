@@ -75,26 +75,34 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
   const showGlow = row.status === "full" || row.status === "over";
 
   return (
-    <div className="relative card overflow-hidden">
-      {/* Group spine */}
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-1 ${groupSpine}`}
-        aria-hidden="true"
-      />
+    <div className="ledger-row">
+      <div className={`ledger-rail ${groupSpine}`} aria-hidden="true" />
 
-      <div className="pl-5 pr-4 py-4">
-        {/* Header */}
+      <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-semibold tracking-tight text-ink truncate">
-              {row.name}
-            </h3>
-            <div className="mt-0.5 text-[11px] text-ink-muted">
-              {row.type} · {row.group}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-[15px] font-semibold tracking-tight text-ink truncate">
+                {row.name}
+              </h3>
+              <span className="text-[11px] text-ink-muted whitespace-nowrap">{row.type}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span
+                className={`text-display-md stat-num ${
+                  availableNegative ? "text-status-over" : "text-ink"
+                } ${isPrefilled ? "italic" : ""}`}
+              >
+                {availableNegative ? "−" : ""}
+                {formatGBP(Math.abs(row.available))}
+              </span>
+              <span className="text-[12px] text-ink-muted">
+                {availableNegative ? "over" : "available"}
+              </span>
             </div>
           </div>
           <span
-            className={`pill ${STATUS_PILL[row.status]} gap-1.5 px-2 py-0.5`}
+            className={`pill ${STATUS_PILL[row.status]} gap-1.5 px-2 py-0.5 border border-current/10`}
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[row.status]}`}
@@ -104,39 +112,8 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           </span>
         </div>
 
-        {/* Hero: available amount */}
-        <div className="mt-4 flex items-baseline justify-between gap-3">
-          <div className="flex items-baseline gap-2 min-w-0">
-            <span
-              className={`text-display-md stat-num ${
-                availableNegative ? "text-status-over" : "text-ink"
-              } ${isPrefilled ? "italic" : ""}`}
-            >
-              {availableNegative ? "−" : ""}
-              {formatGBP(Math.abs(row.available))}
-            </span>
-            <span className="text-[12px] text-ink-muted">
-              {availableNegative ? "over" : "available"}
-            </span>
-          </div>
-          {row.type === "Pot" && row.carryIn !== 0 && (
-            <span
-              className={`pill ${
-                row.carryIn > 0
-                  ? "bg-status-okSoft text-status-ok"
-                  : "bg-status-overSoft text-status-over"
-              }`}
-              title="Carried in from previous month"
-            >
-              {row.carryIn > 0 ? "+" : "−"}
-              {formatGBP(Math.abs(row.carryIn))} carried
-            </span>
-          )}
-        </div>
-
-        {/* Progress bar — the visual story */}
         <div
-          className="mt-3 relative h-2.5 rounded-full bg-surface-sunken overflow-hidden"
+          className="mt-3 relative h-2.5 rounded-full bg-surface-sunken/80 overflow-hidden"
           style={
             showGlow
               ? { boxShadow: `inset 0 0 0 1px rgb(var(${statusVar}) / 0.18)` }
@@ -170,8 +147,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           )}
         </div>
 
-        {/* Footer: spent / budgeted with editable budget */}
-        <div className="mt-3 flex items-baseline justify-between gap-2 text-[12px]">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 text-[12px]">
           <div className="text-ink-muted stat-num">
             <span className="font-semibold text-ink">{formatGBP(row.spent)}</span>
             <span className="mx-1.5 text-ink-faint">of</span>
@@ -213,15 +189,36 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               </button>
             )}
           </div>
-          {isPrefilled && row.budgeted > 0 && (
-            <span className="pill bg-accent-soft text-accent">
-              from {monthLabel(row.prefillSourceMonth!)}
-            </span>
-          )}
+          <div className="flex flex-wrap justify-end gap-1.5">
+            {row.type === "Pot" && row.carryIn !== 0 && (
+              <span
+                className={`pill ${
+                  row.carryIn > 0
+                    ? "bg-status-okSoft text-status-ok"
+                    : "bg-status-overSoft text-status-over"
+                }`}
+                title="Carried in from previous month"
+              >
+                {row.carryIn > 0 ? "+" : "−"}
+                {formatGBP(Math.abs(row.carryIn))} carried
+              </span>
+            )}
+            {isPrefilled && row.budgeted > 0 && (
+              <span className="pill bg-accent-soft text-accent">
+                from {monthLabel(row.prefillSourceMonth!)}
+              </span>
+            )}
+          </div>
         </div>
 
+        {isPrefilled && row.budgeted > 0 && !availableNegative && (
+          <p className="mt-2 text-[11px] text-ink-muted">
+            Showing last month's budget — tap to confirm or change.
+          </p>
+        )}
+
         {availableNegative && (
-          <div className="mt-3 pt-3 border-t border-status-over/15 flex items-center justify-between gap-2">
+          <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl border border-status-over/20 bg-status-overSoft/40 px-3 py-2">
             <span className="text-[12px] text-status-over font-medium">
               {row.acknowledged
                 ? "Overspend accepted."
@@ -233,12 +230,6 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               </button>
             )}
           </div>
-        )}
-
-        {isPrefilled && row.budgeted > 0 && !availableNegative && (
-          <p className="mt-2 text-[11px] text-ink-muted">
-            Showing last month's budget — tap to confirm or change.
-          </p>
         )}
       </div>
     </div>

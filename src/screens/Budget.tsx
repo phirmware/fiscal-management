@@ -58,45 +58,48 @@ export function BudgetScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero p-6">
-        <div className="section-row">
-          <span className="section-eyebrow">Unallocated this month</span>
-          <button type="button" className="btn-accent btn-sm" onClick={() => setAddOpen(true)}>
-            + Category
-          </button>
-        </div>
-        <div className="mt-2">
-          <h2
-            className={`text-display-xl stat-num ${
-              monthSummary.unallocated < 0 ? "text-status-over" : "text-balance-gradient"
-            }`}
-          >
-            {monthSummary.unallocated < 0 ? "−" : ""}
-            {formatGBP(Math.abs(monthSummary.unallocated))}
-          </h2>
-        </div>
-        <div className="mt-5 grid grid-cols-3 gap-3 pt-4 border-t border-surface-border">
-          <div>
-            <div className="section-eyebrow text-ink-muted">Budgeted</div>
-            <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
-              {formatGBP(monthSummary.totalBudgeted)}
-            </div>
+      <section className="card-hero holo-panel p-6">
+        <div className="absolute inset-x-6 top-0 h-1 ledger-strip opacity-70" aria-hidden="true" />
+        <div className="relative">
+          <div className="section-row">
+            <span className="section-eyebrow">Unallocated this month</span>
+            <button type="button" className="btn-accent btn-sm" onClick={() => setAddOpen(true)}>
+              + Category
+            </button>
           </div>
-          <div className="text-center">
-            <div className="section-eyebrow text-ink-muted">Spent</div>
-            <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
-              {formatGBP(monthSummary.totalSpent)}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="section-eyebrow text-ink-muted">Left to spend</div>
-            <div
-              className={`mt-1.5 text-[16px] font-semibold stat-num ${
-                breakdown.leftToSpend < 0 ? "text-status-over" : "text-status-ok"
+          <div className="mt-3">
+            <h2
+              className={`text-display-xl stat-num ${
+                monthSummary.unallocated < 0 ? "text-status-over" : "text-balance-gradient"
               }`}
             >
-              {breakdown.leftToSpend < 0 ? "−" : ""}
-              {formatGBP(Math.abs(breakdown.leftToSpend))}
+              {monthSummary.unallocated < 0 ? "−" : ""}
+              {formatGBP(Math.abs(monthSummary.unallocated))}
+            </h2>
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-2.5 max-[380px]:grid-cols-1">
+            <div className="metric-tile">
+              <div className="section-eyebrow text-ink-muted">Budgeted</div>
+              <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
+                {formatGBP(monthSummary.totalBudgeted)}
+              </div>
+            </div>
+            <div className="metric-tile text-center">
+              <div className="section-eyebrow text-ink-muted">Spent</div>
+              <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
+                {formatGBP(monthSummary.totalSpent)}
+              </div>
+            </div>
+            <div className="metric-tile text-right">
+              <div className="section-eyebrow text-ink-muted">Left</div>
+              <div
+                className={`mt-1.5 text-[16px] font-semibold stat-num ${
+                  breakdown.leftToSpend < 0 ? "text-status-over" : "text-status-ok"
+                }`}
+              >
+                {breakdown.leftToSpend < 0 ? "−" : ""}
+                {formatGBP(Math.abs(breakdown.leftToSpend))}
+              </div>
             </div>
           </div>
         </div>
@@ -168,15 +171,8 @@ export function BudgetScreen() {
         const sharePct =
           groupBudgeted > 0 ? Math.min(100, Math.round((groupTotal / groupBudgeted) * 100)) : null;
         return (
-          <section key={g} className="flex flex-col gap-3">
-            <div
-              className="flex items-center justify-between gap-3 px-3 py-2 rounded-2xl border border-surface-border/60"
-              style={{
-                background: `linear-gradient(90deg,
-                  rgb(var(${groupVar}) / 0.10) 0%,
-                  rgb(var(${groupVar}) / 0.02) 100%)`,
-              }}
-            >
+          <section key={g} className="ledger-panel">
+            <div className="ledger-header">
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className="w-2 h-2 rounded-full"
@@ -205,14 +201,23 @@ export function BudgetScreen() {
                 )}
               </div>
             </div>
-            {byGroup[g].map((row) => (
-              <CategoryRow
-                key={row.categoryId}
-                row={row}
-                month={month}
-                onResolveOverspend={() => setOverspendFor(rowToOverspend(row))}
-              />
-            ))}
+            <div
+              className="relative z-[1] h-1"
+              style={{
+                background: `linear-gradient(90deg, rgb(var(${groupVar}) / 0.42), transparent)`,
+              }}
+              aria-hidden="true"
+            />
+            <div>
+              {byGroup[g].map((row) => (
+                <CategoryRow
+                  key={row.categoryId}
+                  row={row}
+                  month={month}
+                  onResolveOverspend={() => setOverspendFor(rowToOverspend(row))}
+                />
+              ))}
+            </div>
           </section>
         );
       })}

@@ -87,7 +87,7 @@ export function TransactionsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero p-6">
+      <section className="card-hero holo-panel p-6">
         <div className="section-row">
           <span className="section-eyebrow">Spent in {monthLabel(month)}</span>
           <button
@@ -189,12 +189,15 @@ export function TransactionsScreen() {
                     {formatGBP(dayTotal)}
                   </span>
                 </div>
-                <ul className="card overflow-hidden divide-y divide-surface-border">
+                <ul className="ledger-panel">
                   {group.items.map((t) => {
                     const cat = categoriesById.get(t.categoryId);
                     const groupName = cat?.group ?? "Wants";
                     return (
-                      <li key={t.id}>
+                      <li
+                        key={t.id}
+                        className="relative z-[1] border-b border-surface-border/60 last:border-b-0"
+                      >
                         <button
                           type="button"
                           className="w-full text-left px-4 py-3.5 flex items-center gap-3

@@ -58,7 +58,7 @@ export function SavingsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero p-6">
+      <section className="card-hero holo-panel p-6">
         <span className="section-eyebrow">Cumulative savings</span>
         <div className="mt-2">
           <h2 className="text-display-xl text-balance-gradient stat-num">

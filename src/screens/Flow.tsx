@@ -23,7 +23,7 @@ export function FlowScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero p-6">
+      <section className="card-hero holo-panel p-6">
         <span className="section-eyebrow">{monthLabel(month)} · income flow</span>
         {flow.totalIncome <= 0 ? (
           <p className="text-[14px] text-ink-soft mt-3 leading-snug">

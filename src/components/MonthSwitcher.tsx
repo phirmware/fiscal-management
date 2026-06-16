@@ -40,16 +40,20 @@ export function MonthSwitcher() {
   const [monthName, year] = label.split(" ");
 
   return (
-    <div className="flex items-center justify-between gap-2 relative">
+    <div
+      className="flex items-center justify-between gap-2 relative rounded-[18px]
+        border border-surface-border/70 bg-surface-card/58 px-1.5 py-1.5"
+      style={{ boxShadow: "var(--shadow-card)" }}
+    >
       <button
         type="button"
-        className="btn-icon"
+        className="btn-icon !min-h-10 !min-w-10"
         onClick={() => setSelectedMonth(prevMonth(month))}
         aria-label="Previous month"
       >
         <ChevronLeft className="w-5 h-5" />
       </button>
-      <div className="flex flex-col items-center min-w-0">
+      <div className="flex flex-col items-center min-w-0 px-3">
         <div className="flex items-baseline gap-1.5">
           <span className="text-[19px] font-semibold tracking-tight text-ink">{monthName}</span>
           <span className="text-[13px] font-medium text-ink-muted tabular-nums">{year}</span>
@@ -78,7 +82,7 @@ export function MonthSwitcher() {
       </div>
       <button
         type="button"
-        className="btn-icon"
+        className="btn-icon !min-h-10 !min-w-10"
         onClick={() => setSelectedMonth(nextMonth(month))}
         aria-label="Next month"
       >

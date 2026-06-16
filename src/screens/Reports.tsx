@@ -111,7 +111,7 @@ export function ReportsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero p-6 print:hidden">
+      <section className="card-hero holo-panel p-6 print:hidden">
         <span className="section-eyebrow">Range</span>
         <div
           className="mt-3 grid grid-cols-4 gap-1 p-1 rounded-2xl bg-surface-sunken

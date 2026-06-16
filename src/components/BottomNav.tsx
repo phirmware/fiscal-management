@@ -87,12 +87,12 @@ export function BottomNav() {
 
   return (
     <div
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone
-        pb-[env(safe-area-inset-bottom)] pt-2 px-3 print:hidden"
+      className="fixed bottom-0 left-1/2 z-30 -translate-x-1/2 w-full max-w-phone
+        thumb-rise pt-2 px-3 print:hidden"
       aria-hidden="false"
     >
       <nav
-        className="card-glass rounded-3xl px-2 py-2"
+        className="card-glass nav-dock px-2 py-2"
         style={{ boxShadow: "var(--shadow-pop)" }}
         aria-label="Primary"
       >
@@ -109,11 +109,21 @@ export function BottomNav() {
                   aria-current={active ? "page" : undefined}
                   aria-label={item.label}
                 >
+                  {active && (
+                    <span
+                      className="absolute inset-x-2 top-1 h-px rounded-full"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, rgb(var(--c-accent) / 0.78), transparent)",
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
                   <span
                     className={`flex items-center justify-center transition-all
                       ${
                         active
-                          ? "px-3.5 py-1 rounded-full bg-accent/15 text-accent scale-105"
+                          ? "px-3.5 py-1 rounded-full bg-accent/16 text-accent scale-105"
                           : "px-2 py-1 text-ink-muted scale-100"
                       }`}
                     style={
