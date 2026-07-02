@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 
 interface ModalProps {
@@ -7,6 +7,11 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  /**
+   * When provided, the body + footer are wrapped in a <form> so pressing
+   * Enter in any field submits. Use `type="submit"` on the primary button.
+   */
+  onSubmit?: () => void;
 }
 
 function CloseIcon({ className }: { className?: string }) {
@@ -24,21 +29,65 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
-export function Modal({ open, onClose, title, children, footer }: ModalProps) {
+const FOCUSABLE =
+  'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+
+export function Modal({ open, onClose, title, children, footer, onSubmit }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Keep Tab focus inside the dialog.
+      if (e.key === "Tab" && panelRef.current) {
+        const focusable = Array.from(
+          panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+        ).filter((el) => el.offsetParent !== null);
+        if (focusable.length === 0) return;
+        const first = focusable[0]!;
+        const last = focusable[focusable.length - 1]!;
+        const active = document.activeElement;
+        if (e.shiftKey && (active === first || !panelRef.current.contains(active))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
+
     window.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      // Hand focus back to the control that opened the dialog.
+      previouslyFocused?.focus?.();
     };
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const body = (
+    <>
+      <div className="px-5 pb-5 overflow-y-auto">{children}</div>
+      {footer && (
+        <div
+          className="px-5 py-3 border-t border-surface-border bg-surface-card
+            flex gap-2 justify-end rounded-b-3xl"
+        >
+          {footer}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -50,12 +99,12 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       aria-label={title}
     >
       <div
+        ref={panelRef}
         className="modal-enter w-full max-w-phone bg-surface-card rounded-t-3xl sm:rounded-3xl
           border border-surface-border flex flex-col max-h-[92vh]"
         style={{ boxShadow: "var(--shadow-pop)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="hidden sm:block" />
         <div className="sm:hidden flex justify-center pt-2 pb-1">
           <span className="w-9 h-1 rounded-full bg-surface-border" aria-hidden="true" />
         </div>
@@ -70,14 +119,18 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
             <CloseIcon className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-5 pb-5 overflow-y-auto">{children}</div>
-        {footer && (
-          <div
-            className="px-5 py-3 border-t border-surface-border bg-surface-card
-              flex gap-2 justify-end rounded-b-3xl"
+        {onSubmit ? (
+          <form
+            className="contents"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onSubmit();
+            }}
           >
-            {footer}
-          </div>
+            {body}
+          </form>
+        ) : (
+          body
         )}
       </div>
     </div>

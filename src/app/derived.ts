@@ -1,4 +1,5 @@
-import { computeMonth } from "../engine.js";
+import { computeMonth, createMonthCache } from "../engine.js";
+import type { CategoryMonthCache } from "../engine.js";
 import type {
   BudgetState,
   Category,
@@ -135,8 +136,19 @@ function earliestRelevantMonth(state: BudgetState, ids: Set<string>): Month | nu
   return earliest;
 }
 
+/** First month that has any savings-related record — the natural start of the savings story. */
+export function earliestSavingsMonth(state: BudgetState): Month | null {
+  const ids = savingsCategoryIds(state);
+  if (ids.size === 0) return null;
+  return earliestRelevantMonth(state, ids);
+}
+
 /** Cumulative savings from inception through (and including) `throughMonth`. */
-export function cumulativeSavings(state: BudgetState, throughMonth: Month): number {
+export function cumulativeSavings(
+  state: BudgetState,
+  throughMonth: Month,
+  cache: CategoryMonthCache = createMonthCache(),
+): number {
   const ids = savingsCategoryIds(state);
   if (ids.size === 0) return 0;
   const earliest = earliestRelevantMonth(state, ids);
@@ -144,7 +156,7 @@ export function cumulativeSavings(state: BudgetState, throughMonth: Month): numb
   let total = 0;
   let m: Month = earliest;
   while (m <= throughMonth) {
-    total += savingsThisMonth(state, computeMonth(state, m));
+    total += savingsThisMonth(state, computeMonth(state, m, cache));
     if (m === throughMonth) break;
     m = nextMonth(m);
   }

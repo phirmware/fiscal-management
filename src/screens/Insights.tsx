@@ -17,8 +17,7 @@ export function InsightsScreen() {
   return (
     <div className="flex flex-col gap-6">
       <div
-        className="p-1 grid grid-cols-3 gap-1 print:hidden rounded-2xl bg-surface-sunken
-          border border-surface-border/60"
+        className="seg grid-cols-3 print:hidden"
         role="tablist"
         aria-label="Insights sub-navigation"
       >
@@ -31,8 +30,7 @@ export function InsightsScreen() {
               role="tab"
               aria-selected={active}
               onClick={() => setTab(t.id)}
-              className={`tap text-[13px] font-semibold rounded-xl py-2.5 transition
-                ${active ? "pill-active" : "text-ink-muted hover:text-ink-soft"}`}
+              className="seg-btn tap !py-2.5"
             >
               {t.label}
             </button>

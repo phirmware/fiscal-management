@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { computeMonth } from "../engine.js";
+import { computeMonth, createMonthCache } from "../engine.js";
 import type { BudgetState } from "../types.js";
+import { cumulativeSavings } from "./derived.js";
 import { buildFlow, rangeSummary, releasesFor, savingsTrend, unresolvedReleases } from "./insights.js";
 import type { ReleaseAck } from "./state.js";
 
@@ -140,5 +141,33 @@ describe("insights helpers", () => {
     expect(r.totalSpent).toBe(2400 + 40 + 80 + 50);
     // savingsThisMonth (max(budgeted, spent)) per month: 100 + 200 + 50 = 350
     expect(r.totalSaved).toBe(350);
+  });
+
+  it("savingsTrend cumulative includes savings from BEFORE the visible range", () => {
+    const b = makeBudget();
+    // Range starts at Feb, but Jan contributed 100 — the line must reflect it.
+    const trend = savingsTrend(b, "2026-02", "2026-03");
+    expect(trend).toHaveLength(2);
+    expect(trend[0]!.monthTotal).toBe(200);
+    expect(trend[0]!.cumulativeTotal).toBe(300); // 100 (Jan) + 200 (Feb)
+    expect(trend[1]!.cumulativeTotal).toBe(350);
+    // And it must agree with cumulativeSavings month by month.
+    expect(trend[1]!.cumulativeTotal).toBe(cumulativeSavings(b, "2026-03"));
+  });
+
+  it("releasesFor skips conversions whose pot ended at exactly zero", () => {
+    const b = makeBudget();
+    // Drain the eatout pot to exactly 0 by end of Feb: 70 + 100 - 170 = 0.
+    b.transactions.push({ id: "e3", categoryId: "eatout", date: "2026-02-20", amount: 120 });
+    const r = releasesFor(b, "2026-03", []);
+    expect(r).toHaveLength(0);
+  });
+
+  it("computeMonth with a shared cache matches fresh computation exactly", () => {
+    const b = makeBudget();
+    const cache = createMonthCache();
+    for (const m of ["2026-01", "2026-02", "2026-03"]) {
+      expect(computeMonth(b, m, cache)).toEqual(computeMonth(b, m));
+    }
   });
 });

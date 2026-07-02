@@ -121,7 +121,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
           }
         >
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+            className="absolute inset-y-0 left-0 rounded-full bar-anim transition-[width] duration-500 ease-out"
             style={{
               width: `${usedPct}%`,
               background: `linear-gradient(90deg,
@@ -159,11 +159,13 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
                 autoFocus
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
+                onFocus={(e) => e.target.select()}
                 onBlur={commit}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") commit();
                   if (e.key === "Escape") setEditing(false);
                 }}
+                aria-label={`Budget for ${row.name}`}
               />
             ) : row.budgeted === 0 ? (
               <button

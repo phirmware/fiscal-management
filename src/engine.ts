@@ -76,7 +76,17 @@ function sumSpent(state: BudgetState, categoryId: string, month: Month): number 
   return roundMoney(total);
 }
 
-type CategoryMonthCache = Map<string, CategoryMonthResult>;
+export type CategoryMonthCache = Map<string, CategoryMonthResult>;
+
+/**
+ * Create a cache that can be shared across multiple computeMonth calls for the
+ * SAME BudgetState. Pot carry-ins recurse through every prior month, so
+ * without a shared cache a range computation is O(months²); with one it's
+ * O(months). Never reuse a cache after the state changes.
+ */
+export function createMonthCache(): CategoryMonthCache {
+  return new Map();
+}
 
 function cacheKey(categoryId: string, month: Month): string {
   return `${categoryId}|${month}`;
@@ -154,8 +164,11 @@ function releasedFromConversionsFor(
   return roundMoney(released);
 }
 
-export function computeMonth(state: BudgetState, month: Month): MonthSummary {
-  const cache: CategoryMonthCache = new Map();
+export function computeMonth(
+  state: BudgetState,
+  month: Month,
+  cache: CategoryMonthCache = new Map(),
+): MonthSummary {
   const { income, incomeSet } = incomeFor(state, month);
 
   const categories: CategoryMonthResult[] = [];
@@ -219,9 +232,10 @@ export function computeRange(
 ): RangeMonthSummary[] {
   if (fromMonth > toMonth) return [];
   const results: RangeMonthSummary[] = [];
+  const cache = createMonthCache();
   let m = fromMonth;
   while (m <= toMonth) {
-    const summary = computeMonth(state, m);
+    const summary = computeMonth(state, m, cache);
     const savings = computeSavings(state, m);
     results.push({ ...summary, savings });
     if (m === toMonth) break;

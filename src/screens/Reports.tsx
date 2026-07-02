@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import { computeMonth, computeSavings } from "../engine.js";
+import { computeMonth, createMonthCache } from "../engine.js";
+import { savingsThisMonth } from "../app/derived.js";
 import { rangeSummary } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
 import { downloadCsv, toCsv } from "../app/utils/csv.js";
-import { monthLabel, monthsBetween, nextMonth, prevMonth } from "../app/utils/month.js";
-import type { Month } from "../types.js";
-
-function addMonths(month: Month, delta: number): Month {
-  let m = month;
-  const step = delta > 0 ? nextMonth : prevMonth;
-  for (let i = 0; i < Math.abs(delta); i++) m = step(m);
-  return m;
-}
+import { showToast } from "../components/Toast.js";
+import { addMonths, monthLabel, monthsBetween } from "../app/utils/month.js";
 
 export function ReportsScreen() {
   const { effective } = useBudgetView();
@@ -28,10 +22,13 @@ export function ReportsScreen() {
 
   const monthBreakdowns = useMemo(() => {
     const months = monthsBetween(fromMonth, month);
+    const cache = createMonthCache();
     return months.map((m) => {
-      const ms = computeMonth(effective, m);
-      const sav = computeSavings(effective, m);
-      return { month: m, summary: ms, savings: sav };
+      const ms = computeMonth(effective, m, cache);
+      // "Saved" here MUST match the headline figure above — both derive from
+      // Savings categories. (A previous version mixed in the legacy
+      // savings-accounts ledger, which reads £0 for category-based savers.)
+      return { month: m, summary: ms, saved: savingsThisMonth(effective, ms) };
     });
   }, [effective, fromMonth, month]);
 
@@ -66,6 +63,7 @@ export function ReportsScreen() {
       });
     const csv = toCsv(headers, rows);
     downloadCsv(`transactions-${fromMonth}_to_${month}.csv`, csv);
+    showToast(`Exported ${rows.length} transactions`);
   }
 
   function exportSummaryCsv() {
@@ -75,10 +73,11 @@ export function ReportsScreen() {
       b.summary.income,
       b.summary.totalBudgeted,
       b.summary.totalSpent,
-      b.savings.monthTotal,
+      b.saved,
       b.summary.unallocated,
     ]);
     downloadCsv(`summary-${fromMonth}_to_${month}.csv`, toCsv(headers, rows));
+    showToast("Monthly summary exported");
   }
 
   function exportCategoriesCsv() {
@@ -101,6 +100,7 @@ export function ReportsScreen() {
       }
     }
     downloadCsv(`categories-${fromMonth}_to_${month}.csv`, toCsv(headers, rows));
+    showToast("Category breakdown exported");
   }
 
   function printStatement() {
@@ -111,21 +111,21 @@ export function ReportsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero holo-panel p-6 print:hidden">
+      <section
+        className="card-hero holo-panel p-6 print:hidden rise"
+        style={{ "--rise-i": 0 } as React.CSSProperties}
+      >
         <span className="section-eyebrow">Range</span>
-        <div
-          className="mt-3 grid grid-cols-4 gap-1 p-1 rounded-2xl bg-surface-sunken
-            border border-surface-border/60"
-        >
+        <div className="mt-3 seg grid-cols-4">
           {([1, 3, 6, 12] as const).map((n) => {
             const active = span === n;
             return (
               <button
                 key={n}
                 type="button"
-                className={`text-[13px] font-semibold py-2 rounded-xl transition ${
-                  active ? "pill-active" : "text-ink-muted hover:text-ink"
-                }`}
+                className="seg-btn"
+                data-active={active}
+                aria-pressed={active}
                 onClick={() => setSpan(n)}
               >
                 {n === 1 ? "1 month" : `${n} months`}
@@ -139,7 +139,7 @@ export function ReportsScreen() {
         </p>
       </section>
 
-      <section className="px-1 print:hidden">
+      <section className="px-1 print:hidden rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
         <h2 className="section-title mb-3">Export</h2>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" onClick={exportTransactionsCsv}>
@@ -160,7 +160,7 @@ export function ReportsScreen() {
         </p>
       </section>
 
-      <section className="card p-4 statement">
+      <section className="card p-4 statement rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
         <header className="border-b border-surface-border pb-3 mb-3 print:mb-4">
           <h1 className="text-base font-semibold">Budget statement</h1>
           <p className="text-xs text-ink-muted">
@@ -193,7 +193,7 @@ export function ReportsScreen() {
                 <td className="text-right py-1 px-2 tabular-nums">{formatGBP(b.summary.income)}</td>
                 <td className="text-right py-1 px-2 tabular-nums">{formatGBP(b.summary.totalBudgeted)}</td>
                 <td className="text-right py-1 px-2 tabular-nums">{formatGBP(b.summary.totalSpent)}</td>
-                <td className="text-right py-1 pl-2 tabular-nums">{formatGBP(b.savings.monthTotal)}</td>
+                <td className="text-right py-1 pl-2 tabular-nums">{formatGBP(b.saved)}</td>
               </tr>
             ))}
           </tbody>

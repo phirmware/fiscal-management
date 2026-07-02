@@ -1,6 +1,7 @@
 import { useAppStore } from "./app/store.js";
 import { useTheme } from "./app/useTheme.js";
 import { AppShell } from "./components/AppShell.js";
+import { ToastHost } from "./components/Toast.js";
 import { BudgetScreen } from "./screens/Budget.js";
 import { FirstRunWizard } from "./screens/FirstRunWizard.js";
 import { HomeScreen } from "./screens/Home.js";
@@ -17,16 +18,27 @@ export function App() {
   );
 
   if (!hasOnboarded && !hasAnyData) {
-    return <FirstRunWizard />;
+    return (
+      <>
+        <FirstRunWizard />
+        <ToastHost />
+      </>
+    );
   }
 
   return (
-    <AppShell>
-      {screen === "home" && <HomeScreen />}
-      {screen === "budget" && <BudgetScreen />}
-      {screen === "transactions" && <TransactionsScreen />}
-      {screen === "insights" && <InsightsScreen />}
-      {screen === "settings" && <SettingsScreen />}
-    </AppShell>
+    <>
+      <AppShell>
+        {/* key remounts the scroll container per screen so entrance animations replay */}
+        <div key={screen} className="flex flex-col gap-6">
+          {screen === "home" && <HomeScreen />}
+          {screen === "budget" && <BudgetScreen />}
+          {screen === "transactions" && <TransactionsScreen />}
+          {screen === "insights" && <InsightsScreen />}
+          {screen === "settings" && <SettingsScreen />}
+        </div>
+      </AppShell>
+      <ToastHost />
+    </>
   );
 }

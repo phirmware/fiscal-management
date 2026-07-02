@@ -1,5 +1,6 @@
 import type { MonthBreakdown } from "../app/derived.js";
 import { formatGBP } from "../app/utils/money.js";
+import { AnimatedGBP } from "./AnimatedNumber.js";
 
 interface IncomeBreakdownProps {
   breakdown: MonthBreakdown;
@@ -50,7 +51,9 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
         </div>
 
         <div className="mt-3">
-          <h2 className="text-display-xl text-balance-gradient stat-num">{formatGBP(income)}</h2>
+          <h2 className="text-display-xl text-balance-gradient stat-num">
+            <AnimatedGBP value={income} />
+          </h2>
         </div>
 
         <div className="hero-metrics mt-5">
@@ -99,8 +102,7 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
               </div>
             </div>
             <div className={`stat-num text-display-md whitespace-nowrap ${naClasses}`}>
-              {notYetAssigned < 0 ? "−" : ""}
-              {formatGBP(Math.abs(notYetAssigned))}
+              <AnimatedGBP value={notYetAssigned} />
             </div>
           </div>
         </div>

@@ -6,12 +6,14 @@ import { unresolvedReleases } from "../app/insights.js";
 import type { ReleaseEntry } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { useBudgetView } from "../app/effectiveBudget.js";
-import { formatGBP } from "../app/utils/money.js";
+import { formatGBP, roundMoney } from "../app/utils/money.js";
+import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { CategoryRow } from "../components/CategoryRow.js";
 import { OverspendPrompt } from "../components/OverspendPrompt.js";
 import { ReallocationDialog } from "../components/ReallocationDialog.js";
 import { ReleaseDialog } from "../components/ReleaseDialog.js";
 import { Modal } from "../components/Modal.js";
+import { showToast } from "../components/Toast.js";
 import type { CategoryType, Group } from "../types.js";
 import { parseMoneyInput } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
@@ -58,7 +60,7 @@ export function BudgetScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero holo-panel p-6">
+      <section className="card-hero holo-panel p-6 rise" style={{ "--rise-i": 0 } as React.CSSProperties}>
         <div className="absolute inset-x-6 top-0 h-1 ledger-strip opacity-70" aria-hidden="true" />
         <div className="relative">
           <div className="section-row">
@@ -73,8 +75,7 @@ export function BudgetScreen() {
                 monthSummary.unallocated < 0 ? "text-status-over" : "text-balance-gradient"
               }`}
             >
-              {monthSummary.unallocated < 0 ? "−" : ""}
-              {formatGBP(Math.abs(monthSummary.unallocated))}
+              <AnimatedGBP value={monthSummary.unallocated} />
             </h2>
           </div>
           <div className="mt-5 grid grid-cols-3 gap-2.5 max-[380px]:grid-cols-1">
@@ -106,8 +107,9 @@ export function BudgetScreen() {
       </section>
 
       {releases.length > 0 && (
-        <section className="rounded-3xl border border-accent/30 bg-accent/8 p-5"
-          style={{ background: "rgb(var(--c-accent) / 0.06)" }}
+        <section
+          className="rounded-3xl border border-accent/30 p-5 rise"
+          style={{ background: "rgb(var(--c-accent) / 0.06)", "--rise-i": 1 } as React.CSSProperties}
         >
           <div className="flex items-start gap-3">
             <div
@@ -162,16 +164,21 @@ export function BudgetScreen() {
 
       {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
 
-      {(["Needs", "Wants", "Savings"] as const).map((g) => {
+      {(["Needs", "Wants", "Savings"] as const).map((g, gi) => {
         if (byGroup[g].length === 0) return null;
         const groupVar =
           g === "Needs" ? "--c-group-needs" : g === "Wants" ? "--c-group-wants" : "--c-group-savings";
-        const groupTotal = byGroup[g].reduce((s, r) => s + r.spent, 0);
-        const groupBudgeted = byGroup[g].reduce((s, r) => s + r.budgeted, 0);
-        const sharePct =
-          groupBudgeted > 0 ? Math.min(100, Math.round((groupTotal / groupBudgeted) * 100)) : null;
+        const groupTotal = roundMoney(byGroup[g].reduce((s, r) => s + r.spent, 0));
+        const groupBudgeted = roundMoney(byGroup[g].reduce((s, r) => s + r.budgeted, 0));
+        const usedPct =
+          groupBudgeted > 0 ? Math.min(100, (groupTotal / groupBudgeted) * 100) : null;
+        const sharePct = usedPct !== null ? Math.round((groupTotal / groupBudgeted) * 100) : null;
         return (
-          <section key={g} className="ledger-panel">
+          <section
+            key={g}
+            className="ledger-panel rise"
+            style={{ "--rise-i": gi + 2 } as React.CSSProperties}
+          >
             <div className="ledger-header">
               <div className="flex items-center gap-2 min-w-0">
                 <span
@@ -201,13 +208,16 @@ export function BudgetScreen() {
                 )}
               </div>
             </div>
-            <div
-              className="relative z-[1] h-1"
-              style={{
-                background: `linear-gradient(90deg, rgb(var(${groupVar}) / 0.42), transparent)`,
-              }}
-              aria-hidden="true"
-            />
+            {/* Group meter — the header strip doubles as a real progress bar. */}
+            <div className="relative z-[1] h-1 bg-surface-sunken/60" aria-hidden="true">
+              <div
+                className="h-full bar-anim"
+                style={{
+                  width: `${usedPct ?? 0}%`,
+                  background: `linear-gradient(90deg, rgb(var(${groupVar}) / 0.55), rgb(var(${groupVar})))`,
+                }}
+              />
+            </div>
             <div>
               {byGroup[g].map((row) => (
                 <CategoryRow
@@ -223,8 +233,18 @@ export function BudgetScreen() {
       })}
 
       {rows.length === 0 && (
-        <div className="card p-10 text-center">
-          <p className="text-[14px] text-ink-soft">No categories for this month yet.</p>
+        <div className="card p-10 text-center rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
+          <div
+            className="w-12 h-12 rounded-full bg-accent/10 text-accent
+              flex items-center justify-center mx-auto mb-3 text-xl"
+            aria-hidden="true"
+          >
+            ⛁
+          </div>
+          <p className="text-[14px] font-semibold text-ink">No categories for this month yet</p>
+          <p className="text-[12px] text-ink-muted mt-1 leading-snug">
+            Categories are the envelopes your money lives in.
+          </p>
           <button type="button" className="btn-accent mt-4" onClick={() => setAddOpen(true)}>
             Add your first category
           </button>
@@ -243,25 +263,10 @@ export function BudgetScreen() {
           if (monthlyBudget !== undefined && monthlyBudget > 0) {
             setBudget(id, month, monthlyBudget);
           }
+          showToast(`${payload.name} added to ${payload.group}`);
           setAddOpen(false);
         }}
       />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <div className="section-eyebrow">{label}</div>
-      <div
-        className={`mt-1 text-[15px] font-semibold stat-num ${
-          value < 0 ? "text-status-over" : "text-ink"
-        }`}
-      >
-        {value < 0 ? "−" : ""}
-        {formatGBP(Math.abs(value))}
-      </div>
     </div>
   );
 }
@@ -317,12 +322,13 @@ function AddCategoryModal({
       open={open}
       onClose={onClose}
       title="New category"
+      onSubmit={submit}
       footer={
         <>
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn-primary" onClick={submit} disabled={!name.trim()}>
+          <button type="submit" className="btn-primary" disabled={!name.trim()}>
             Add
           </button>
         </>
@@ -420,7 +426,7 @@ function Segmented({
 }) {
   return (
     <div
-      className="grid gap-1 p-1 rounded-xl bg-surface-sunken"
+      className="seg"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       role="radiogroup"
     >
@@ -433,8 +439,7 @@ function Segmented({
             role="radio"
             aria-checked={active}
             onClick={() => onChange(opt)}
-            className={`text-[13px] font-semibold py-1.5 rounded-lg transition
-              ${active ? "bg-surface-card text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}
+            className="seg-btn !py-1.5"
           >
             {opt}
           </button>

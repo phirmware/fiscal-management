@@ -56,10 +56,10 @@ export default {
         ],
       },
       fontSize: {
-        "display-2xl": ["3.5rem", { lineHeight: "1", letterSpacing: "0", fontWeight: "740" }],
-        "display-xl": ["2.75rem", { lineHeight: "1.05", letterSpacing: "0", fontWeight: "740" }],
-        "display-lg": ["2.25rem", { lineHeight: "1.1", letterSpacing: "0", fontWeight: "720" }],
-        "display-md": ["1.625rem", { lineHeight: "1.15", letterSpacing: "0", fontWeight: "720" }],
+        "display-2xl": ["3.5rem", { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "740" }],
+        "display-xl": ["2.75rem", { lineHeight: "1.05", letterSpacing: "-0.022em", fontWeight: "740" }],
+        "display-lg": ["2.25rem", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "720" }],
+        "display-md": ["1.625rem", { lineHeight: "1.15", letterSpacing: "-0.015em", fontWeight: "720" }],
       },
       maxWidth: {
         phone: "30rem",

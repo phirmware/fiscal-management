@@ -1,4 +1,4 @@
-import { computeMonth } from "../engine.js";
+import { computeMonth, createMonthCache } from "../engine.js";
 import type {
   BudgetState,
   Category,
@@ -6,9 +6,10 @@ import type {
   Month,
   MonthSummary,
 } from "../types.js";
-import { cumulativeSavings, savingsThisMonth } from "./derived.js";
+import { earliestSavingsMonth, savingsThisMonth } from "./derived.js";
 import { isAcked } from "./state.js";
 import type { ReleaseAck } from "./state.js";
+import { roundMoney } from "./utils/money.js";
 import { monthsBetween, nextMonth, prevMonth } from "./utils/month.js";
 
 export interface SavingsTrendPoint {
@@ -17,16 +18,35 @@ export interface SavingsTrendPoint {
   cumulativeTotal: number;
 }
 
+/**
+ * Savings per month plus a running cumulative total, in one forward pass.
+ * Walks from the earliest savings-relevant month (so the cumulative line is
+ * correct even when the visible range starts later) and shares a single
+ * engine cache — O(months) instead of the naive O(months²).
+ */
 export function savingsTrend(state: BudgetState, fromMonth: Month, toMonth: Month): SavingsTrendPoint[] {
   const months = monthsBetween(fromMonth, toMonth);
-  return months.map((m) => {
-    const summary = computeMonth(state, m);
-    return {
-      month: m,
-      monthTotal: savingsThisMonth(state, summary),
-      cumulativeTotal: cumulativeSavings(state, m),
-    };
-  });
+  if (months.length === 0) return [];
+
+  const cache = createMonthCache();
+  const earliest = earliestSavingsMonth(state);
+  const walkFrom = earliest && earliest < fromMonth ? earliest : fromMonth;
+
+  const points: SavingsTrendPoint[] = [];
+  let running = 0;
+  let m: Month = walkFrom;
+  while (m <= toMonth) {
+    const monthTotal = earliest && m >= earliest
+      ? savingsThisMonth(state, computeMonth(state, m, cache))
+      : 0;
+    running = roundMoney(running + monthTotal);
+    if (m >= fromMonth) {
+      points.push({ month: m, monthTotal, cumulativeTotal: running });
+    }
+    if (m === toMonth) break;
+    m = nextMonth(m);
+  }
+  return points;
 }
 
 export interface FlowNode {
@@ -91,7 +111,10 @@ export function buildFlow(
   }
 
   const allocated = groupAmount.Needs + groupAmount.Wants + groupAmount.Savings;
-  const notYetAssigned = Math.max(0, totalIncome - allocated);
+  const notYetAssigned = roundMoney(Math.max(0, totalIncome - allocated));
+  for (const g of ["Needs", "Wants", "Savings"] as const) {
+    groupAmount[g] = roundMoney(groupAmount[g]);
+  }
 
   const nodes: FlowNode[] = [];
   const links: FlowLink[] = [];
@@ -142,6 +165,8 @@ export interface ReleaseEntry {
  */
 export function releasesFor(state: BudgetState, month: Month, acks: ReleaseAck[]): ReleaseEntry[] {
   const out: ReleaseEntry[] = [];
+  // Lazily computed once — most months have no conversions at all.
+  let prevSummary: MonthSummary | null = null;
   for (const cat of state.categories) {
     const segs = cat.typeSegments;
     for (let i = 1; i < segs.length; i++) {
@@ -149,14 +174,19 @@ export function releasesFor(state: BudgetState, month: Month, acks: ReleaseAck[]
       const prev = segs[i - 1]!;
       if (cur.fromMonth !== month) continue;
       if (prev.type !== "Pot" || cur.type !== "Limit") continue;
-      const prevMonthSummary = computeMonth(state, prevMonth(month));
-      const priorCat = prevMonthSummary.categories.find((c) => c.categoryId === cat.id);
+      prevSummary ??= computeMonth(state, prevMonth(month));
+      const priorCat = prevSummary.categories.find((c) => c.categoryId === cat.id);
       if (!priorCat) continue;
+      const amount = roundMoney(priorCat.available);
+      // A pot that ended at exactly zero has nothing to release — surfacing a
+      // "£0 released" prompt would be pure noise (and impossible to resolve
+      // via "assign", which ignores zero amounts).
+      if (amount === 0) continue;
       out.push({
         categoryId: cat.id,
         categoryName: cat.name,
         month,
-        amount: priorCat.available,
+        amount,
         acknowledged: isAcked(acks, cat.id, month),
       });
     }
@@ -180,12 +210,13 @@ export interface RangeSummary {
 
 export function rangeSummary(state: BudgetState, fromMonth: Month, toMonth: Month): RangeSummary {
   const months = monthsBetween(fromMonth, toMonth);
+  const cache = createMonthCache();
   let totalIncome = 0;
   let totalBudgeted = 0;
   let totalSpent = 0;
   let totalSaved = 0;
   for (const m of months) {
-    const ms = computeMonth(state, m);
+    const ms = computeMonth(state, m, cache);
     totalIncome += ms.income;
     totalBudgeted += ms.totalBudgeted;
     totalSpent += ms.totalSpent;
@@ -194,10 +225,10 @@ export function rangeSummary(state: BudgetState, fromMonth: Month, toMonth: Mont
   return {
     fromMonth,
     toMonth,
-    totalIncome,
-    totalBudgeted,
-    totalSpent,
-    totalSaved,
+    totalIncome: roundMoney(totalIncome),
+    totalBudgeted: roundMoney(totalBudgeted),
+    totalSpent: roundMoney(totalSpent),
+    totalSaved: roundMoney(totalSaved),
     monthCount: months.length,
   };
 }

@@ -4,7 +4,7 @@ import { buildFlow } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { useBudgetView } from "../app/effectiveBudget.js";
 import { monthLabel } from "../app/utils/month.js";
-import { formatGBP } from "../app/utils/money.js";
+import { formatGBP, roundMoney } from "../app/utils/money.js";
 import { FlowDiagram } from "../components/FlowDiagram.js";
 
 export function FlowScreen() {
@@ -16,14 +16,16 @@ export function FlowScreen() {
     return buildFlow(effective, m);
   }, [effective, month]);
 
-  const allocated = flow.nodes
-    .filter((n) => n.column === 1 && n.id !== "unassigned")
-    .reduce((s, n) => s + n.amount, 0);
+  const allocated = roundMoney(
+    flow.nodes
+      .filter((n) => n.column === 1 && n.id !== "unassigned")
+      .reduce((s, n) => s + n.amount, 0),
+  );
   const unassigned = flow.nodes.find((n) => n.id === "unassigned")?.amount ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero holo-panel p-6">
+      <section className="card-hero holo-panel p-6 rise" style={{ "--rise-i": 0 } as React.CSSProperties}>
         <span className="section-eyebrow">{monthLabel(month)} · income flow</span>
         {flow.totalIncome <= 0 ? (
           <p className="text-[14px] text-ink-soft mt-3 leading-snug">
@@ -54,7 +56,7 @@ export function FlowScreen() {
         )}
       </section>
 
-      <section className="px-1">
+      <section className="px-1 rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
         <div className="section-row mb-4">
           <h2 className="section-title">Flow</h2>
         </div>

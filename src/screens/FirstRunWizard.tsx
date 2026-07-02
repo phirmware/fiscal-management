@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../app/store.js";
 import { currentMonth } from "../app/state.js";
-import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
+import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
+import { showToast } from "../components/Toast.js";
 import type { CategoryType, Group } from "../types.js";
 
 interface StarterCategory {
@@ -61,8 +62,22 @@ export function FirstRunWizard() {
     setSelection((prev) => ({ ...prev, [name]: { ...prev[name]!, amount: value } }));
   }
 
+  /** Amount a starter row will actually contribute: user override, else suggestion. */
+  function effectiveAmount(s: StarterCategory): number {
+    const choice = selection[s.name];
+    if (!choice || !choice.selected) return 0;
+    const userAmount = parseMoneyInput(choice.amount);
+    return userAmount !== null ? userAmount : suggestedAmount(s);
+  }
+
+  const selectedCount = STARTERS.filter((s) => selection[s.name]?.selected).length;
+  const allocatedTotal = roundMoney(STARTERS.reduce((sum, s) => sum + effectiveAmount(s), 0));
+  const remaining = roundMoney(income - allocatedTotal);
+  const overAllocated = income > 0 && remaining < 0;
+
   function finish() {
     if (income > 0) setIncome(month, income);
+    let added = 0;
     for (const s of STARTERS) {
       const choice = selection[s.name];
       if (!choice || !choice.selected) continue;
@@ -72,11 +87,16 @@ export function FirstRunWizard() {
         type: s.type,
         fromMonth: month,
       });
-      const userAmount = parseMoneyInput(choice.amount);
-      const amount = userAmount !== null ? userAmount : suggestedAmount(s);
+      added++;
+      const amount = effectiveAmount(s);
       if (amount > 0) setBudget(id, month, amount);
     }
     completeOnboarding();
+    showToast(
+      added > 0
+        ? `Set up ${added} ${added === 1 ? "category" : "categories"} — welcome aboard`
+        : "Welcome aboard",
+    );
   }
 
   return (
@@ -195,6 +215,47 @@ export function FirstRunWizard() {
         </section>
 
         <div className="sticky bottom-0 pb-safe pt-4 -mx-4 px-4 scrim">
+          {income > 0 && selectedCount > 0 && (
+            <div
+              className="mb-3 rounded-2xl border px-4 py-3 bg-surface-card/90 backdrop-blur-md"
+              style={{
+                borderColor: overAllocated
+                  ? "rgb(var(--c-status-over) / 0.35)"
+                  : "rgb(var(--c-surface-border))",
+              }}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[12px] font-medium text-ink-soft">
+                  {selectedCount} {selectedCount === 1 ? "category" : "categories"} ·{" "}
+                  <span className="stat-num font-semibold text-ink">
+                    {formatGBP(allocatedTotal)}
+                  </span>{" "}
+                  planned
+                </span>
+                <span
+                  className={`text-[12px] stat-num font-semibold ${
+                    overAllocated ? "text-status-over" : "text-status-ok"
+                  }`}
+                >
+                  {overAllocated
+                    ? `${formatGBP(Math.abs(remaining))} over income`
+                    : `${formatGBP(remaining)} left`}
+                </span>
+              </div>
+              <div className="mt-2 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-[width] duration-300 ease-out"
+                  style={{
+                    width: `${Math.min(100, (allocatedTotal / income) * 100)}%`,
+                    background: overAllocated
+                      ? "rgb(var(--c-status-over))"
+                      : "linear-gradient(90deg, rgb(var(--c-accent) / 0.8), rgb(var(--c-group-savings)))",
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+          )}
           <button type="button" className="btn-accent w-full" onClick={finish}>
             Get started — {monthLabel(month)}
           </button>

@@ -2,9 +2,17 @@ import { useRef, useState } from "react";
 import { resolveType } from "../engine.js";
 import { useAppStore } from "../app/store.js";
 import { Modal } from "../components/Modal.js";
+import { showToast } from "../components/Toast.js";
 import { monthLabel } from "../app/utils/month.js";
 import type { CategoryType } from "../types.js";
 import type { ThemePreference } from "../app/state.js";
+
+const THEME_OPTIONS: { id: ThemePreference; label: string }[] = [
+  { id: "light", label: "Light" },
+  { id: "dark", label: "Dark" },
+  { id: "liquid", label: "Liquid" },
+  { id: "system", label: "System" },
+];
 
 export function SettingsScreen() {
   const budget = useAppStore((s) => s.budget);
@@ -23,6 +31,11 @@ export function SettingsScreen() {
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
+  const [convertFor, setConvertFor] = useState<{
+    id: string;
+    name: string;
+    target: CategoryType;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function doExport() {
@@ -37,6 +50,7 @@ export function SettingsScreen() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    showToast("Backup downloaded");
   }
 
   function doImportFile(file: File) {
@@ -59,44 +73,33 @@ export function SettingsScreen() {
       setImportOpen(false);
       setImportText("");
       setImportError(null);
+      showToast("Data imported");
     } catch (err) {
       setImportError(err instanceof Error ? err.message : String(err));
     }
   }
 
+  const activeCategories = budget.categories.filter((c) => !c.archived);
+  const archivedCategories = budget.categories.filter((c) => c.archived);
+
   return (
     <div className="flex flex-col gap-6">
-      <section className="card p-5">
+      <section className="card p-5 rise" style={{ "--rise-i": 0 } as React.CSSProperties}>
         <h2 className="section-title">Appearance</h2>
         <p className="text-[12px] text-ink-muted mt-1">Theme preference for this device.</p>
-        <div
-          className="mt-4 grid grid-cols-4 gap-1 p-1 rounded-2xl bg-surface-sunken
-            border border-surface-border/60"
-          role="radiogroup"
-          aria-label="Theme"
-        >
-          {(["light", "dark", "liquid", "system"] as ThemePreference[]).map((opt) => {
-            const active = themePref === opt;
-            const label =
-              opt === "light"
-                ? "Light"
-                : opt === "dark"
-                  ? "Dark"
-                  : opt === "liquid"
-                    ? "Liquid"
-                    : "System";
+        <div className="mt-4 seg grid-cols-4" role="radiogroup" aria-label="Theme">
+          {THEME_OPTIONS.map((opt) => {
+            const active = themePref === opt.id;
             return (
               <button
-                key={opt}
+                key={opt.id}
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => setTheme(opt)}
-                className={`text-[12px] font-semibold py-2.5 rounded-xl transition ${
-                  active ? "pill-active" : "text-ink-muted hover:text-ink"
-                }`}
+                onClick={() => setTheme(opt.id)}
+                className="seg-btn !text-[12px]"
               >
-                {label}
+                {opt.label}
               </button>
             );
           })}
@@ -106,8 +109,16 @@ export function SettingsScreen() {
         </p>
       </section>
 
-      <section className="card p-5">
-        <h2 className="section-title">Categories</h2>
+      <section className="card p-5 rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
+        <div className="section-row">
+          <h2 className="section-title">Categories</h2>
+          {budget.categories.length > 0 && (
+            <span className="text-[11px] text-ink-muted">
+              {activeCategories.length} active
+              {archivedCategories.length > 0 && ` · ${archivedCategories.length} archived`}
+            </span>
+          )}
+        </div>
         {budget.categories.length === 0 ? (
           <p className="text-[12px] text-ink-muted mt-3">No categories yet.</p>
         ) : (
@@ -117,31 +128,30 @@ export function SettingsScreen() {
               return (
                 <li
                   key={c.id}
-                  className="rounded-2xl border border-surface-border bg-surface-card p-4"
+                  className={`rounded-2xl border border-surface-border bg-surface-card p-4
+                    transition-opacity ${c.archived ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <input
                       className="input-base !py-1.5 !px-2.5 !text-[14px] font-semibold flex-1 min-w-0"
                       value={c.name}
                       onChange={(e) => renameCategory(c.id, e.target.value)}
+                      aria-label={`Rename ${c.name}`}
                     />
                     <span className="pill bg-surface-sunken text-ink-muted">
                       {c.archived ? "Archived" : activeType}
                     </span>
                   </div>
-                  <div
-                    className="mt-3 grid grid-cols-3 gap-1 p-1 rounded-xl bg-surface-sunken
-                      border border-surface-border/60"
-                  >
+                  <div className="mt-3 seg grid-cols-3">
                     {(["Needs", "Wants", "Savings"] as const).map((g) => {
                       const active = c.group === g;
                       return (
                         <button
                           key={g}
                           type="button"
-                          className={`text-[12px] font-semibold py-1.5 rounded-lg transition ${
-                            active ? "pill-active" : "text-ink-muted hover:text-ink"
-                          }`}
+                          className="seg-btn !py-1.5 !text-[12px]"
+                          data-active={active}
+                          aria-pressed={active}
                           onClick={() => setCategoryGroup(c.id, g)}
                         >
                           {g}
@@ -150,15 +160,26 @@ export function SettingsScreen() {
                     })}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <ConvertControl
-                      currentType={activeType}
-                      month={month}
-                      onConvert={(t) => convertCategoryType(c.id, month, t)}
-                    />
+                    <button
+                      type="button"
+                      className="btn-secondary text-xs px-2 py-1"
+                      onClick={() =>
+                        setConvertFor({
+                          id: c.id,
+                          name: c.name,
+                          target: activeType === "Pot" ? "Limit" : "Pot",
+                        })
+                      }
+                    >
+                      Convert to {activeType === "Pot" ? "Limit" : "Pot"}
+                    </button>
                     <button
                       type="button"
                       className="btn-ghost btn-sm"
-                      onClick={() => archiveCategory(c.id, !c.archived)}
+                      onClick={() => {
+                        archiveCategory(c.id, !c.archived);
+                        showToast(c.archived ? `${c.name} restored` : `${c.name} archived`);
+                      }}
                     >
                       {c.archived ? "Unarchive" : "Archive"}
                     </button>
@@ -174,10 +195,11 @@ export function SettingsScreen() {
         </p>
       </section>
 
-      <section className="card p-5">
+      <section className="card p-5 rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
         <h2 className="section-title">Backup</h2>
         <p className="text-[12px] text-ink-muted mt-1 leading-snug">
-          JSON export is your only backup. Save somewhere safe.
+          Everything lives on this device — the JSON export is your only backup. Save it
+          somewhere safe.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2">
           <button type="button" className="btn-secondary" onClick={doExport}>
@@ -204,7 +226,10 @@ export function SettingsScreen() {
         </div>
       </section>
 
-      <section className="card p-5 border-status-over/20">
+      <section
+        className="card p-5 border-status-over/20 rise"
+        style={{ "--rise-i": 3 } as React.CSSProperties}
+      >
         <h2 className="text-[13px] font-semibold text-status-over uppercase tracking-widest">
           Danger zone
         </h2>
@@ -239,9 +264,51 @@ export function SettingsScreen() {
           className="input-base mt-3 font-mono text-xs h-40"
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
+          aria-label="JSON to import"
         />
         {importError && (
           <p className="text-xs text-status-over mt-2">{importError}</p>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!convertFor}
+        onClose={() => setConvertFor(null)}
+        title={convertFor ? `Convert ${convertFor.name}?` : ""}
+        footer={
+          <>
+            <button type="button" className="btn-ghost" onClick={() => setConvertFor(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                if (!convertFor) return;
+                convertCategoryType(convertFor.id, month, convertFor.target);
+                showToast(`${convertFor.name} is a ${convertFor.target} from ${monthLabel(month)}`);
+                setConvertFor(null);
+              }}
+            >
+              Convert to {convertFor?.target}
+            </button>
+          </>
+        }
+      >
+        {convertFor && (
+          <div className="text-[13px] text-ink-soft leading-relaxed">
+            <p>
+              <span className="font-semibold text-ink">{convertFor.name}</span> becomes a{" "}
+              <span className="font-semibold text-ink">{convertFor.target}</span> from{" "}
+              <span className="font-semibold text-ink">{monthLabel(month)}</span> onwards.
+              Earlier months keep their history.
+            </p>
+            <p className="mt-2 text-[12px] text-ink-muted leading-snug">
+              {convertFor.target === "Limit"
+                ? "Any accumulated Pot balance is released — you'll be prompted to give it a new home."
+                : "The category starts accumulating: whatever is left each month rolls into the next."}
+            </p>
+          </div>
         )}
       </Modal>
 
@@ -260,6 +327,7 @@ export function SettingsScreen() {
               onClick={() => {
                 resetAll();
                 setResetOpen(false);
+                showToast("All data wiped");
               }}
             >
               Yes, wipe all data
@@ -274,29 +342,3 @@ export function SettingsScreen() {
     </div>
   );
 }
-
-function ConvertControl({
-  currentType,
-  month,
-  onConvert,
-}: {
-  currentType: CategoryType;
-  month: string;
-  onConvert: (t: CategoryType) => void;
-}) {
-  const target: CategoryType = currentType === "Pot" ? "Limit" : "Pot";
-  return (
-    <button
-      type="button"
-      className="btn-secondary text-xs px-2 py-1"
-      onClick={() => {
-        if (confirm(`Convert to ${target} from ${monthLabel(month)}?`)) {
-          onConvert(target);
-        }
-      }}
-    >
-      Convert to {target}
-    </button>
-  );
-}
-

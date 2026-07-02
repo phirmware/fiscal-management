@@ -15,11 +15,11 @@ function resolveTheme(pref: ThemePreference): AppliedTheme {
 function metaColourFor(theme: AppliedTheme): string {
   switch (theme) {
     case "light":
-      return "#faf9f7";
+      return "#f3f2ed";
     case "dark":
-      return "#090a12";
+      return "#090a0f";
     case "liquid":
-      return "#04060f";
+      return "#06070d";
   }
 }
 

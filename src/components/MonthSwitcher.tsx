@@ -42,7 +42,7 @@ export function MonthSwitcher() {
   return (
     <div
       className="flex items-center justify-between gap-2 relative rounded-[18px]
-        border border-surface-border/70 bg-surface-card/58 px-1.5 py-1.5"
+        border border-surface-border/70 bg-surface-card/60 px-1.5 py-1.5"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <button

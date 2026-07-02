@@ -120,15 +120,18 @@ export function BottomNav() {
                     />
                   )}
                   <span
-                    className={`flex items-center justify-center transition-all
+                    className={`flex items-center justify-center transition-all duration-300
                       ${
                         active
-                          ? "px-3.5 py-1 rounded-full bg-accent/16 text-accent scale-105"
+                          ? "px-3.5 py-1 rounded-full bg-accent/15 text-accent scale-105"
                           : "px-2 py-1 text-ink-muted scale-100"
                       }`}
                     style={
                       active
-                        ? { boxShadow: "inset 0 0 0 1px rgb(var(--c-accent) / 0.18)" }
+                        ? {
+                            boxShadow: "inset 0 0 0 1px rgb(var(--c-accent) / 0.18)",
+                            transitionTimingFunction: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+                          }
                         : undefined
                     }
                   >

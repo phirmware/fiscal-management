@@ -5,16 +5,9 @@ import { savingsTrend } from "../app/insights.js";
 import { useAppStore } from "../app/store.js";
 import { useBudgetView } from "../app/effectiveBudget.js";
 import { formatGBP } from "../app/utils/money.js";
-import { monthLabel, nextMonth, prevMonth } from "../app/utils/month.js";
-import type { Month } from "../types.js";
+import { addMonths, monthLabel } from "../app/utils/month.js";
+import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { SavingsTrendChart } from "../components/SavingsTrendChart.js";
-
-function addMonths(month: Month, delta: number): Month {
-  let m = month;
-  const step = delta > 0 ? nextMonth : prevMonth;
-  for (let i = 0; i < Math.abs(delta); i++) m = step(m);
-  return m;
-}
 
 export function SavingsScreen() {
   const { effective } = useBudgetView();
@@ -58,18 +51,18 @@ export function SavingsScreen() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero holo-panel p-6">
+      <section className="card-hero holo-panel p-6 rise" style={{ "--rise-i": 0 } as React.CSSProperties}>
         <span className="section-eyebrow">Cumulative savings</span>
         <div className="mt-2">
           <h2 className="text-display-xl text-balance-gradient stat-num">
-            {formatGBP(cumulative)}
+            <AnimatedGBP value={cumulative} />
           </h2>
         </div>
         <div className="mt-5 pt-4 border-t border-surface-border flex items-baseline justify-between">
           <div>
             <div className="section-eyebrow text-ink-muted">{monthLabel(month)}</div>
             <div className="mt-1.5 text-[18px] font-semibold stat-num text-ink">
-              {formatGBP(monthNet)}
+              <AnimatedGBP value={monthNet} />
             </div>
           </div>
           <div className="text-right max-w-[60%]">
@@ -81,7 +74,7 @@ export function SavingsScreen() {
         </div>
       </section>
 
-      <section className="px-1">
+      <section className="px-1 rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
         <div className="section-row mb-4">
           <h2 className="section-title">Savings categories</h2>
           <button
@@ -112,12 +105,12 @@ export function SavingsScreen() {
                   </div>
                   <span className="pill bg-surface-sunken text-ink-muted">{r.type}</span>
                 </div>
-                <div className="mt-3 grid grid-cols-4 gap-3">
+                <div className="mt-3 grid grid-cols-2 min-[420px]:grid-cols-4 gap-x-3 gap-y-3">
                   <Stat label="Budgeted" value={r.budgeted} />
                   <Stat label="Activities" value={r.spent} />
                   <Stat label="Counted" value={Math.max(r.budgeted, r.spent)} highlight />
                   <Stat
-                    label={r.type === "Pot" ? "Pot balance" : "Remaining"}
+                    label={r.type === "Pot" ? "Balance" : "Remaining"}
                     value={r.available}
                   />
                 </div>
@@ -142,7 +135,7 @@ export function SavingsScreen() {
         )}
       </section>
 
-      <section className="px-1">
+      <section className="px-1 rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
         <div className="section-row mb-4">
           <div>
             <h2 className="section-title">Trend</h2>
@@ -157,10 +150,11 @@ export function SavingsScreen() {
                 <button
                   key={n}
                   type="button"
-                  className={`text-[12px] px-2.5 py-1 rounded-lg transition font-semibold ${
+                  className={`text-[12px] px-2.5 py-1 rounded-lg transition font-semibold focus-ring ${
                     active ? "pill-active" : "text-ink-muted hover:text-ink"
                   }`}
                   onClick={() => setTrendRange(n)}
+                  aria-pressed={active}
                 >
                   {n}m
                 </button>

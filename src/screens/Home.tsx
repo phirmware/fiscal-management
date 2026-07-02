@@ -10,13 +10,21 @@ import {
   savingsThisMonth,
   unresolvedOverspends,
 } from "../app/derived.js";
+import type { CategoryRow } from "../app/derived.js";
 import { useAppStore } from "../app/store.js";
 import { useBudgetView } from "../app/effectiveBudget.js";
-import { formatGBP } from "../app/utils/money.js";
+import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
+import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { IncomeBreakdown } from "../components/IncomeBreakdown.js";
 import { Modal } from "../components/Modal.js";
 import { OverspendPrompt } from "../components/OverspendPrompt.js";
-import { parseMoneyInput } from "../app/utils/money.js";
+import { showToast } from "../components/Toast.js";
+
+const GROUP_VAR: Record<string, string> = {
+  Needs: "--c-group-needs",
+  Wants: "--c-group-wants",
+  Savings: "--c-group-savings",
+};
 
 function GroupComparisonRow({
   label,
@@ -56,7 +64,7 @@ function GroupComparisonRow({
       </div>
       <div className="mt-2 relative h-2 w-full rounded-full bg-surface-sunken overflow-hidden flex">
         <div
-          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          className="h-full rounded-full bar-anim transition-[width] duration-500 ease-out"
           style={{
             width: `${fillPct}%`,
             background: `linear-gradient(90deg,
@@ -66,7 +74,7 @@ function GroupComparisonRow({
         />
         {overshootDisplay > 0 && (
           <div
-            className="h-full"
+            className="h-full bar-anim"
             style={{
               width: `${overshootDisplay * 0.5}%`,
               background: `linear-gradient(90deg,
@@ -79,6 +87,73 @@ function GroupComparisonRow({
         )}
       </div>
     </div>
+  );
+}
+
+function TopSpendingSection({ rows }: { rows: CategoryRow[] }) {
+  const top = useMemo(() => {
+    const spenders = rows
+      .filter((r) => r.group !== "Savings" && r.spent > 0)
+      .sort((a, b) => b.spent - a.spent);
+    const total = roundMoney(spenders.reduce((s, r) => s + r.spent, 0));
+    return { list: spenders.slice(0, 3), total };
+  }, [rows]);
+
+  if (top.list.length === 0 || top.total <= 0) return null;
+
+  return (
+    <section className="dashboard-band">
+      <div className="section-row mb-4">
+        <div>
+          <h2 className="section-title">Biggest spends</h2>
+          <p className="text-[12px] text-ink-muted mt-0.5">
+            Where the money actually went this month.
+          </p>
+        </div>
+      </div>
+      <ul className="space-y-3.5">
+        {top.list.map((r, i) => {
+          const share = Math.round((r.spent / top.total) * 100);
+          const groupVar = GROUP_VAR[r.group] ?? "--c-accent";
+          return (
+            <li key={r.categoryId}>
+              <div className="flex items-baseline justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-5 h-5 rounded-md flex items-center justify-center
+                      text-[10px] font-bold shrink-0"
+                    style={{
+                      background: `rgb(var(${groupVar}) / 0.14)`,
+                      color: `rgb(var(${groupVar}))`,
+                    }}
+                    aria-hidden="true"
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="text-[13px] font-semibold text-ink tracking-tight truncate">
+                    {r.name}
+                  </span>
+                </div>
+                <span className="stat-num text-[13px] whitespace-nowrap">
+                  <span className="font-semibold text-ink">{formatGBP(r.spent)}</span>
+                  <span className="text-ink-muted ml-1.5">{share}%</span>
+                </span>
+              </div>
+              <div className="mt-1.5 ml-7 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
+                <div
+                  className="h-full rounded-full bar-anim"
+                  style={{
+                    width: `${Math.min(100, (r.spent / top.total) * 100)}%`,
+                    background: `rgb(var(${groupVar}) / 0.85)`,
+                  }}
+                  aria-hidden="true"
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -112,30 +187,44 @@ export function HomeScreen() {
 
   function saveIncome() {
     const v = parseMoneyInput(draftIncome);
-    if (v !== null) setIncome(month, v);
+    if (v !== null) {
+      setIncome(month, v);
+      showToast(`Income set to ${formatGBP(v)}`);
+    }
     setIncomeOpen(false);
   }
 
+  let riseIndex = 0;
+  const rise = () => ({ ["--rise-i" as string]: riseIndex++ });
+
   return (
     <div className="flex flex-col gap-6">
-      <IncomeBreakdown
-        breakdown={breakdown}
-        incomeSet={monthSummary.incomeSet}
-        onSetIncome={() => {
-          setDraftIncome(String(monthSummary.income || ""));
-          setIncomeOpen(true);
-        }}
-      />
+      <div className="rise" style={rise()}>
+        <IncomeBreakdown
+          breakdown={breakdown}
+          incomeSet={monthSummary.incomeSet}
+          onSetIncome={() => {
+            setDraftIncome(String(monthSummary.income || ""));
+            setIncomeOpen(true);
+          }}
+        />
+      </div>
 
-      {unresolved.length > 0 && <OverspendPrompt rows={unresolved} month={month} />}
+      {unresolved.length > 0 && (
+        <div className="rise" style={rise()}>
+          <OverspendPrompt rows={unresolved} month={month} />
+        </div>
+      )}
 
-      <LeftToSpendCard
-        leftToSpend={breakdown.leftToSpend}
-        spendingBudget={breakdown.spendingBudget}
-        spendingSpent={breakdown.spendingSpent}
-      />
+      <div className="rise" style={rise()}>
+        <LeftToSpendCard
+          leftToSpend={breakdown.leftToSpend}
+          spendingBudget={breakdown.spendingBudget}
+          spendingSpent={breakdown.spendingSpent}
+        />
+      </div>
 
-      <section className="dashboard-band">
+      <section className="dashboard-band rise" style={rise()}>
         <div className="section-row mb-4">
           <div>
             <h2 className="section-title">Money split</h2>
@@ -144,29 +233,51 @@ export function HomeScreen() {
             </p>
           </div>
         </div>
-        <div className="space-y-4">
-          <GroupComparisonRow
-            label="Needs"
-            actual={totals.needs}
-            benchmark={benchmark.needs}
-            groupVar="--c-group-needs"
-          />
-          <GroupComparisonRow
-            label="Wants"
-            actual={totals.wants}
-            benchmark={benchmark.wants}
-            groupVar="--c-group-wants"
-          />
-          <GroupComparisonRow
-            label="Savings"
-            actual={totals.savings}
-            benchmark={benchmark.savings}
-            groupVar="--c-group-savings"
-          />
-        </div>
+        {monthSummary.income > 0 ? (
+          <div className="space-y-4">
+            <GroupComparisonRow
+              label="Needs"
+              actual={totals.needs}
+              benchmark={benchmark.needs}
+              groupVar="--c-group-needs"
+            />
+            <GroupComparisonRow
+              label="Wants"
+              actual={totals.wants}
+              benchmark={benchmark.wants}
+              groupVar="--c-group-wants"
+            />
+            <GroupComparisonRow
+              label="Savings"
+              actual={totals.savings}
+              benchmark={benchmark.savings}
+              groupVar="--c-group-savings"
+            />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface-sunken/60 px-4 py-3.5">
+            <p className="text-[12px] text-ink-soft leading-snug">
+              Set this month's income to unlock the benchmark comparison.
+            </p>
+            <button
+              type="button"
+              className="btn-secondary btn-sm shrink-0"
+              onClick={() => {
+                setDraftIncome("");
+                setIncomeOpen(true);
+              }}
+            >
+              Set income
+            </button>
+          </div>
+        )}
       </section>
 
-      <section className="dashboard-band">
+      <div className="rise" style={rise()}>
+        <TopSpendingSection rows={rows} />
+      </div>
+
+      <section className="dashboard-band rise" style={rise()}>
         <div className="section-row mb-4">
           <div>
             <h2 className="section-title">Savings</h2>
@@ -178,15 +289,17 @@ export function HomeScreen() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <div className="section-eyebrow text-ink-muted">This month</div>
-            <div className="text-display-md text-ink stat-num mt-2">
-              {formatGBP(savedThisMonth)}
-            </div>
+            <AnimatedGBP
+              value={savedThisMonth}
+              className="block text-display-md text-ink stat-num mt-2"
+            />
           </div>
           <div className="text-right">
             <div className="section-eyebrow text-ink-muted">Cumulative</div>
-            <div className="text-display-md text-ink stat-num mt-2">
-              {formatGBP(savedCumulative)}
-            </div>
+            <AnimatedGBP
+              value={savedCumulative}
+              className="block text-display-md text-ink stat-num mt-2"
+            />
           </div>
         </div>
         {!hasSavingsCategories && (
@@ -200,12 +313,13 @@ export function HomeScreen() {
         open={incomeOpen}
         onClose={() => setIncomeOpen(false)}
         title="Income for this month"
+        onSubmit={saveIncome}
         footer={
           <>
             <button type="button" className="btn-ghost" onClick={() => setIncomeOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-accent" onClick={saveIncome}>
+            <button type="submit" className="btn-accent">
               Save
             </button>
           </>
@@ -287,7 +401,7 @@ function LeftToSpendCard({
           </p>
         </div>
         <span
-          className="pill gap-1.5 px-2 py-0.5"
+          className="pill gap-1.5 px-2 py-0.5 whitespace-nowrap shrink-0"
           style={{
             background: `rgb(var(${statusVar}) / 0.14)`,
             color: `rgb(var(${statusVar}))`,
@@ -303,12 +417,10 @@ function LeftToSpendCard({
       </div>
 
       <div className="mt-3 flex items-baseline gap-3">
-        <span
+        <AnimatedGBP
+          value={leftToSpend}
           className={`text-display-xl stat-num ${isOver ? "text-status-over" : "text-ink"}`}
-        >
-          {isOver ? "−" : ""}
-          {formatGBP(Math.abs(leftToSpend))}
-        </span>
+        />
         {spendingBudget > 0 && (
           <span className="text-[12px] text-ink-muted stat-num">
             of {formatGBP(spendingBudget)}
@@ -325,7 +437,7 @@ function LeftToSpendCard({
         }
       >
         <div
-          className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out"
+          className="absolute inset-y-0 left-0 rounded-full bar-anim transition-[width] duration-500 ease-out"
           style={{
             width: `${fillPct}%`,
             background: `linear-gradient(90deg,

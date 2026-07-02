@@ -1,36 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { monthFromDate } from "../engine.js";
 import { useAppStore } from "../app/store.js";
-import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
-import { monthLabel } from "../app/utils/month.js";
+import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
+import { friendlyDayLabel, isValidIsoDate, monthLabel, todayIso } from "../app/utils/month.js";
+import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { Modal } from "../components/Modal.js";
+import { showToast } from "../components/Toast.js";
 import type { Transaction } from "../types.js";
 
-function todayIso(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function friendlyDayLabel(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const today = new Date();
-  const todayMid = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
-  const targetMid = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((todayMid - targetMid) / 86_400_000);
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays > 1 && diffDays < 7) {
-    return d.toLocaleDateString("en-GB", { weekday: "long" });
-  }
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "long",
-  });
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" strokeWidth={1.8} />
+      <path
+        d="m16.5 16.5 4 4"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
 }
 
 export function TransactionsScreen() {
@@ -42,6 +32,7 @@ export function TransactionsScreen() {
   const deleteTxn = useAppStore((s) => s.deleteTransaction);
 
   const [filterCat, setFilterCat] = useState<string>("all");
+  const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
 
@@ -50,16 +41,28 @@ export function TransactionsScreen() {
     [budget.categories],
   );
 
-  const list = useMemo(() => {
-    const out = budget.transactions
-      .filter((t) => monthFromDate(t.date) === month)
-      .filter((t) => filterCat === "all" || t.categoryId === filterCat)
-      .slice()
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
-    return out;
-  }, [budget.transactions, month, filterCat]);
+  const monthList = useMemo(
+    () => budget.transactions.filter((t) => monthFromDate(t.date) === month),
+    [budget.transactions, month],
+  );
 
-  const monthTotal = list.reduce((s, t) => s + t.amount, 0);
+  const list = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return monthList
+      .filter((t) => filterCat === "all" || t.categoryId === filterCat)
+      .filter((t) => {
+        if (!q) return true;
+        const cat = categoriesById.get(t.categoryId);
+        return (
+          (t.note ?? "").toLowerCase().includes(q) ||
+          (cat?.name ?? "").toLowerCase().includes(q)
+        );
+      })
+      .slice()
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? 1 : -1));
+  }, [monthList, filterCat, query, categoriesById]);
+
+  const monthTotal = roundMoney(list.reduce((s, t) => s + t.amount, 0));
 
   // Group transactions by date for the list
   const groupedByDate = useMemo(() => {
@@ -78,16 +81,37 @@ export function TransactionsScreen() {
   // Counts per category for the filter chips
   const countsByCat = useMemo(() => {
     const counts = new Map<string, number>();
-    const monthList = budget.transactions.filter((t) => monthFromDate(t.date) === month);
     for (const t of monthList) {
       counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
     }
     return counts;
-  }, [budget.transactions, month]);
+  }, [monthList]);
+
+  const showSearch = monthList.length > 6 || query !== "";
+
+  function handleDelete(t: Transaction) {
+    deleteTxn(t.id);
+    setOpen(false);
+    const cat = categoriesById.get(t.categoryId);
+    showToast(`Deleted ${formatGBP(t.amount)}${cat ? ` from ${cat.name}` : ""}`, {
+      actionLabel: "Undo",
+      onAction: () => {
+        addTxn({
+          categoryId: t.categoryId,
+          date: t.date,
+          amount: t.amount,
+          ...(t.note ? { note: t.note } : {}),
+        });
+      },
+    });
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="card-hero holo-panel p-6">
+      <section
+        className="card-hero holo-panel p-6 rise"
+        style={{ "--rise-i": 0 } as React.CSSProperties}
+      >
         <div className="section-row">
           <span className="section-eyebrow">Spent in {monthLabel(month)}</span>
           <button
@@ -104,7 +128,7 @@ export function TransactionsScreen() {
         </div>
         <div className="mt-2">
           <h2 className="text-display-xl text-balance-gradient stat-num">
-            {formatGBP(monthTotal)}
+            <AnimatedGBP value={monthTotal} />
           </h2>
         </div>
         <div className="text-[12px] text-ink-muted mt-1">
@@ -117,19 +141,54 @@ export function TransactionsScreen() {
               </span>
             </>
           )}
+          {query.trim() !== "" && (
+            <>
+              {" "}· matching{" "}
+              <span className="text-ink-soft font-medium">“{query.trim()}”</span>
+            </>
+          )}
         </div>
       </section>
 
+      {showSearch && (
+        <div className="relative rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
+          <SearchIcon
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-muted
+              pointer-events-none"
+          />
+          <input
+            type="search"
+            className="input-base !pl-10 !py-2.5"
+            placeholder="Search notes and categories…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search transactions"
+          />
+          {query !== "" && (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold
+                uppercase tracking-wide text-ink-muted hover:text-ink px-2 py-1 rounded-lg
+                focus-ring"
+              onClick={() => setQuery("")}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {budget.categories.length > 0 && (
         <div
-          className="-mx-4 px-4 overflow-x-auto no-scrollbar"
+          className="-mx-4 px-4 overflow-x-auto no-scrollbar rise"
+          style={{ "--rise-i": 2 } as React.CSSProperties}
           role="tablist"
           aria-label="Filter by category"
         >
           <div className="flex gap-2 pb-1 min-w-min">
             <FilterChip
               label="All"
-              count={list.length}
+              count={monthList.length}
               active={filterCat === "all"}
               onClick={() => setFilterCat("all")}
             />
@@ -143,7 +202,7 @@ export function TransactionsScreen() {
                   count={count}
                   active={filterCat === c.id}
                   group={c.group}
-                  onClick={() => setFilterCat(c.id)}
+                  onClick={() => setFilterCat(filterCat === c.id ? "all" : c.id)}
                 />
               );
             })}
@@ -152,11 +211,11 @@ export function TransactionsScreen() {
       )}
 
       {budget.categories.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="card p-10 text-center rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
           <p className="text-[14px] text-ink-soft">Create a category first to start logging spend.</p>
         </div>
       ) : list.length === 0 ? (
-        <div className="card p-10 text-center">
+        <div className="card p-10 text-center rise" style={{ "--rise-i": 3 } as React.CSSProperties}>
           <div
             className="w-12 h-12 rounded-full bg-accent/10 text-accent
               flex items-center justify-center mx-auto mb-3 text-xl"
@@ -164,17 +223,32 @@ export function TransactionsScreen() {
           >
             ✦
           </div>
-          <p className="text-[14px] font-semibold text-ink">Nothing logged yet</p>
-          <p className="text-[12px] text-ink-muted mt-1">
-            Tap <span className="font-semibold text-ink-soft">+ Add</span> to log your first spend.
-          </p>
+          {query.trim() !== "" || filterCat !== "all" ? (
+            <>
+              <p className="text-[14px] font-semibold text-ink">No matches</p>
+              <p className="text-[12px] text-ink-muted mt-1">
+                Try clearing the search or the category filter.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[14px] font-semibold text-ink">Nothing logged yet</p>
+              <p className="text-[12px] text-ink-muted mt-1">
+                Tap <span className="font-semibold text-ink-soft">+ Add</span> to log your first spend.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {groupedByDate.map((group) => {
-            const dayTotal = group.items.reduce((s, t) => s + t.amount, 0);
+          {groupedByDate.map((group, gi) => {
+            const dayTotal = roundMoney(group.items.reduce((s, t) => s + t.amount, 0));
             return (
-              <section key={group.date}>
+              <section
+                key={group.date}
+                className="rise"
+                style={{ "--rise-i": Math.min(gi + 3, 8) } as React.CSSProperties}
+              >
                 <div
                   className="sticky top-0 z-[1] -mx-4 px-4 py-2
                     bg-surface/85 backdrop-blur-md
@@ -240,24 +314,21 @@ export function TransactionsScreen() {
         open={open}
         onClose={() => setOpen(false)}
         editing={editing}
+        month={month}
         defaultCategoryId={lastCategoryId ?? budget.categories[0]?.id ?? null}
         categories={budget.categories}
         onSave={(payload) => {
           if (editing) {
             editTxn(editing.id, payload);
+            showToast("Transaction updated");
           } else {
             addTxn(payload);
+            const cat = categoriesById.get(payload.categoryId);
+            showToast(`${formatGBP(payload.amount)} logged${cat ? ` to ${cat.name}` : ""}`);
           }
           setOpen(false);
         }}
-        onDelete={
-          editing
-            ? () => {
-                deleteTxn(editing.id);
-                setOpen(false);
-              }
-            : undefined
-        }
+        onDelete={editing ? () => handleDelete(editing) : undefined}
       />
     </div>
   );
@@ -267,6 +338,7 @@ function TxnModal({
   open,
   onClose,
   editing,
+  month,
   defaultCategoryId,
   categories,
   onSave,
@@ -275,6 +347,7 @@ function TxnModal({
   open: boolean;
   onClose: () => void;
   editing: Transaction | null;
+  month: string;
   defaultCategoryId: string | null;
   categories: { id: string; name: string }[];
   onSave: (payload: { categoryId: string; date: string; amount: number; note?: string }) => void;
@@ -295,9 +368,13 @@ function TxnModal({
     setNote(editing?.note ?? "");
   });
 
+  const dateValid = isValidIsoDate(date);
+  const canSave = !!categoryId && parseMoneyInput(amount) !== null && dateValid;
+  const differentMonth = dateValid && !date.startsWith(month);
+
   function submit() {
     const a = parseMoneyInput(amount);
-    if (!categoryId || a === null) return;
+    if (!categoryId || a === null || !dateValid) return;
     onSave({ categoryId, date, amount: a, note: note.trim() || undefined });
   }
 
@@ -306,6 +383,7 @@ function TxnModal({
       open={open}
       onClose={onClose}
       title={editing ? "Edit transaction" : "New transaction"}
+      onSubmit={submit}
       footer={
         <>
           {onDelete && (
@@ -316,12 +394,7 @@ function TxnModal({
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={submit}
-            disabled={!categoryId || parseMoneyInput(amount) === null}
-          >
+          <button type="submit" className="btn-primary" disabled={!canSave}>
             {editing ? "Save" : "Add"}
           </button>
         </>
@@ -374,6 +447,15 @@ function TxnModal({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+          {!dateValid && date !== "" && (
+            <p className="text-[12px] text-status-over mt-1.5">Enter a valid date.</p>
+          )}
+          {differentMonth && (
+            <p className="text-[12px] text-status-info mt-1.5 leading-snug">
+              This date is outside {monthLabel(month)} — the entry will appear under{" "}
+              {monthLabel(date.slice(0, 7))}.
+            </p>
+          )}
         </label>
         <label className="block">
           <span className="block text-[13px] font-medium text-ink-soft mb-1.5">
@@ -383,7 +465,7 @@ function TxnModal({
             className="input-base"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder=""
+            placeholder="e.g. Weekly shop"
           />
         </label>
       </div>
