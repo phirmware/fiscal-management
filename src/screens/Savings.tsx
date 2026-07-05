@@ -93,7 +93,7 @@ export function SavingsScreen() {
             </p>
           </div>
         ) : (
-          <ul className="flex flex-col gap-2.5">
+          <ul role="list" className="flex flex-col gap-2.5">
             {rowsForCategories.map((r) => (
               <li key={r.id} className="card p-4">
                 <div className="flex items-center justify-between gap-2">
@@ -186,9 +186,9 @@ function Stat({
     <div>
       <div className="section-eyebrow">{label}</div>
       <div
-        className={`mt-1 text-[14px] stat-num ${
-          highlight ? "font-bold text-ink" : "font-semibold"
-        } ${value < 0 ? "text-status-over" : "text-ink"}`}
+        className={`mt-1 text-[14px] stat-num font-semibold ${
+          value < 0 ? "text-status-over" : highlight ? "text-ink" : "text-ink-soft"
+        }`}
       >
         {value < 0 ? "−" : ""}
         {formatGBP(Math.abs(value))}

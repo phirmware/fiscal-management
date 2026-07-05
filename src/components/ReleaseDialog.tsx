@@ -6,6 +6,7 @@ import { useBudgetView } from "../app/effectiveBudget.js";
 import { useAppStore } from "../app/store.js";
 import { formatGBP } from "../app/utils/money.js";
 import { Modal } from "./Modal.js";
+import { Select } from "./Select.js";
 
 interface Props {
   entry: ReleaseEntry | null;
@@ -37,13 +38,23 @@ function ChoiceCard({
         }`}
     >
       <div className="flex items-start gap-3">
-        <input
-          type="radio"
-          name="release"
-          className="mt-1 accent-current"
-          checked={selected}
-          onChange={onSelect}
-        />
+        <span className="group relative mt-0.5 inline-grid size-5 shrink-0 grid-cols-1">
+          <input
+            type="radio"
+            name="release"
+            className="col-start-1 row-start-1 appearance-none rounded-full border
+              border-surface-border bg-surface-card checked:border-accent checked:bg-accent
+              focus-visible:outline-none focus-ring forced-colors:appearance-auto"
+            checked={selected}
+            onChange={onSelect}
+          />
+          <span
+            className="pointer-events-none col-start-1 row-start-1 size-[40%] self-center
+              justify-self-center rounded-full bg-surface opacity-0
+              group-has-[:checked]:opacity-100"
+            aria-hidden="true"
+          />
+        </span>
         <div className="flex-1 min-w-0">
           <div className="text-[14px] font-semibold tracking-tight text-ink">{title}</div>
           <p className="text-[12px] text-ink-muted mt-0.5 leading-snug">{hint}</p>
@@ -98,7 +109,7 @@ export function ReleaseDialog({ entry, onClose }: Props) {
           </button>
           <button
             type="button"
-            className="btn-primary"
+            className="btn-accent"
             onClick={confirm}
             disabled={choice === "assign" && (!target || candidates.length === 0)}
           >
@@ -130,8 +141,9 @@ export function ReleaseDialog({ entry, onClose }: Props) {
         >
           <div className="mt-3">
             {candidates.length > 0 ? (
-              <select
-                className="input-base"
+              <Select
+                name="recipient"
+                aria-label="Category to receive the amount"
                 value={target}
                 onChange={(e) => setRecipientId(e.target.value)}
               >
@@ -140,7 +152,7 @@ export function ReleaseDialog({ entry, onClose }: Props) {
                     {c.name} — currently {formatGBP(c.available)} available
                   </option>
                 ))}
-              </select>
+              </Select>
             ) : (
               <p className="text-[12px] text-status-over">No other categories yet.</p>
             )}

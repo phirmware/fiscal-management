@@ -177,7 +177,7 @@ export function SavingsTrendChart({ points }: Props) {
         y={badgeY}
         textAnchor="end"
         className="fill-ink"
-        style={{ fontSize: 12, fontWeight: 700 }}
+        style={{ fontSize: 12, fontWeight: 600 }}
       >
         {formatGBPCompact(lastValue)}
       </text>

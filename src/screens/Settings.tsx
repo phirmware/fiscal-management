@@ -122,7 +122,7 @@ export function SettingsScreen() {
         {budget.categories.length === 0 ? (
           <p className="text-[12px] text-ink-muted mt-3">No categories yet.</p>
         ) : (
-          <ul className="mt-3 flex flex-col gap-2.5">
+          <ul role="list" className="mt-3 flex flex-col gap-2.5">
             {budget.categories.map((c) => {
               const activeType = resolveType(c, month);
               return (
@@ -134,6 +134,7 @@ export function SettingsScreen() {
                   <div className="flex items-center justify-between gap-2">
                     <input
                       className="input-base !py-1.5 !px-2.5 !text-[14px] font-semibold flex-1 min-w-0"
+                      name={`rename-${c.id}`}
                       value={c.name}
                       onChange={(e) => renameCategory(c.id, e.target.value)}
                       aria-label={`Rename ${c.name}`}
@@ -162,7 +163,7 @@ export function SettingsScreen() {
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      className="btn-secondary text-xs px-2 py-1"
+                      className="btn-secondary btn-sm"
                       onClick={() =>
                         setConvertFor({
                           id: c.id,
@@ -230,9 +231,7 @@ export function SettingsScreen() {
         className="card p-5 border-status-over/20 rise"
         style={{ "--rise-i": 3 } as React.CSSProperties}
       >
-        <h2 className="text-[13px] font-semibold text-status-over uppercase tracking-widest">
-          Danger zone
-        </h2>
+        <h2 className="section-title text-status-over">Danger zone</h2>
         <p className="text-[12px] text-ink-muted mt-1 leading-snug">
           Wipes all data on this device. Export first if you want a backup.
         </p>
@@ -250,24 +249,25 @@ export function SettingsScreen() {
             <button type="button" className="btn-ghost" onClick={() => setImportOpen(false)}>
               Cancel
             </button>
-            <button type="button" className="btn-primary" onClick={confirmImport}>
+            <button type="button" className="btn-accent" onClick={confirmImport}>
               Replace current data
             </button>
           </>
         }
       >
-        <p className="text-xs text-ink-muted">
+        <p className="text-[13px] text-ink-muted">
           This replaces all current data with the imported file. Cannot be undone — export
           first if unsure.
         </p>
         <textarea
-          className="input-base mt-3 font-mono text-xs h-40"
+          className="input-base mt-3 font-mono !text-[13px] h-40"
+          name="import-json"
           value={importText}
           onChange={(e) => setImportText(e.target.value)}
           aria-label="JSON to import"
         />
         {importError && (
-          <p className="text-xs text-status-over mt-2">{importError}</p>
+          <p className="text-[13px] text-status-over mt-2">{importError}</p>
         )}
       </Modal>
 
@@ -282,7 +282,7 @@ export function SettingsScreen() {
             </button>
             <button
               type="button"
-              className="btn-primary"
+              className="btn-accent"
               onClick={() => {
                 if (!convertFor) return;
                 convertCategoryType(convertFor.id, month, convertFor.target);

@@ -155,6 +155,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
               <input
                 className="input-base !inline !w-24 !py-1 !px-2 !text-[13px] !font-semibold stat-num"
                 type="text"
+                name={`budget-${row.categoryId}`}
                 inputMode="decimal"
                 autoFocus
                 value={draft}
@@ -227,7 +228,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
                 : `Over by ${formatGBP(-row.available)}`}
             </span>
             {!row.acknowledged && onResolveOverspend && (
-              <button type="button" className="btn-accent btn-sm" onClick={onResolveOverspend}>
+              <button type="button" className="btn-secondary btn-sm" onClick={onResolveOverspend}>
                 Resolve
               </button>
             )}

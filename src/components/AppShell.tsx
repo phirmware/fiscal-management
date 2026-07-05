@@ -4,7 +4,7 @@ import { MonthSwitcher } from "./MonthSwitcher.js";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-full flex flex-col relative">
+    <div className="isolate min-h-full flex flex-col relative">
       {/*
         Header spans the full viewport so the blurred background extends edge-to-edge
         on wide screens; its content is the one that's centered + capped.

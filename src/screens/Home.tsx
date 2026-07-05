@@ -111,7 +111,7 @@ function TopSpendingSection({ rows }: { rows: CategoryRow[] }) {
           </p>
         </div>
       </div>
-      <ul className="space-y-3.5">
+      <ul role="list" className="space-y-3.5">
         {top.list.map((r, i) => {
           const share = Math.round((r.spent / top.total) * 100);
           const groupVar = GROUP_VAR[r.group] ?? "--c-accent";
@@ -121,7 +121,7 @@ function TopSpendingSection({ rows }: { rows: CategoryRow[] }) {
                 <div className="flex items-center gap-2 min-w-0">
                   <span
                     className="w-5 h-5 rounded-md flex items-center justify-center
-                      text-[10px] font-bold shrink-0"
+                      text-[10px] font-semibold shrink-0"
                     style={{
                       background: `rgb(var(${groupVar}) / 0.14)`,
                       color: `rgb(var(${groupVar}))`,
@@ -325,7 +325,7 @@ export function HomeScreen() {
           </>
         }
       >
-        <label className="block text-[13px] font-medium text-ink-soft mb-2">
+        <label htmlFor="income-input" className="block text-[13px] font-medium text-ink-soft mb-2">
           Net (after-tax) income
         </label>
         <div className="relative">
@@ -337,6 +337,8 @@ export function HomeScreen() {
             £
           </span>
           <input
+            id="income-input"
+            name="income"
             type="text"
             inputMode="decimal"
             className="input-base !pl-9 text-2xl font-semibold stat-num"
@@ -393,9 +395,7 @@ function LeftToSpendCard({
       <div className="absolute inset-x-5 top-0 h-1 ledger-strip opacity-60" aria-hidden="true" />
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-muted">
-            Left to spend this month
-          </div>
+          <div className="section-eyebrow">Left to spend this month</div>
           <p className="text-[11px] text-ink-muted mt-1 leading-snug">
             Needs + Wants budgets, minus what you've spent.
           </p>

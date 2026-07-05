@@ -104,10 +104,10 @@ export function FirstRunWizard() {
       <div className="w-full max-w-phone flex flex-col gap-6 p-4">
         <header className="pt-6">
           <span className="section-eyebrow text-accent">Welcome</span>
-          <h1 className="text-display-xl text-balance-gradient tracking-tight mt-2">
+          <h1 className="text-display-xl text-balance-gradient text-balance mt-2">
             Plan with intent.
           </h1>
-          <p className="text-[14px] text-ink-soft mt-3 leading-relaxed max-w-[22rem]">
+          <p className="text-base text-ink-soft mt-3 leading-relaxed max-w-[22rem] text-pretty">
             Two quick steps. Everything stays on this device — no account, no sync, ever.
           </p>
         </header>
@@ -137,10 +137,12 @@ export function FirstRunWizard() {
             </span>
             <input
               className="input-base !pl-9 text-2xl font-semibold stat-num"
+              name="income"
               inputMode="decimal"
               value={incomeDraft}
               onChange={(e) => setIncomeDraft(e.target.value)}
               placeholder="2500"
+              aria-label="Monthly net income"
               autoFocus
             />
           </div>
@@ -175,7 +177,7 @@ export function FirstRunWizard() {
           <p className="text-[12px] text-ink-muted mt-2 ml-10 leading-snug">
             Tick what fits. Budgets prefilled from a rough split of income; edit to taste.
           </p>
-          <ul className="mt-4 flex flex-col">
+          <ul role="list" className="mt-4 flex flex-col">
             {STARTERS.map((s) => {
               const ch = selection[s.name]!;
               const suggestion = suggestedAmount(s);
@@ -185,13 +187,34 @@ export function FirstRunWizard() {
                   className="flex items-center gap-3 py-3 border-b border-surface-border
                     last:border-b-0"
                 >
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 accent-accent rounded"
-                    checked={ch.selected}
-                    onChange={() => toggle(s.name)}
-                    aria-label={`Include ${s.name}`}
-                  />
+                  <span className="group relative inline-grid size-5 shrink-0 grid-cols-1">
+                    <input
+                      type="checkbox"
+                      name={`include-${s.name}`}
+                      className="col-start-1 row-start-1 appearance-none rounded border
+                        border-surface-border bg-surface-card checked:border-accent
+                        checked:bg-accent focus-visible:outline-none focus-ring
+                        forced-colors:appearance-auto"
+                      checked={ch.selected}
+                      onChange={() => toggle(s.name)}
+                      aria-label={`Include ${s.name}`}
+                    />
+                    <svg
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      aria-hidden="true"
+                      className="pointer-events-none col-start-1 row-start-1 size-[70%]
+                        self-center justify-self-center stroke-surface opacity-0
+                        group-has-[:checked]:opacity-100"
+                    >
+                      <path
+                        d="M3 8L6 11L11 3.5"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
                   <div className="flex-1 min-w-0">
                     <div className="text-[14px] font-semibold text-ink truncate">{s.name}</div>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -201,11 +224,13 @@ export function FirstRunWizard() {
                   </div>
                   <input
                     type="text"
+                    name={`amount-${s.name}`}
                     inputMode="decimal"
                     className="input-base !py-1.5 !px-2 !text-[13px] font-semibold w-20 stat-num"
                     value={ch.amount}
                     onChange={(e) => setAmount(s.name, e.target.value)}
                     placeholder={suggestion > 0 ? String(suggestion) : "0"}
+                    aria-label={`Monthly budget for ${s.name}`}
                     disabled={!ch.selected}
                   />
                 </li>
@@ -276,10 +301,8 @@ function Tile({ label, value, dot }: { label: string; value: string; dot: string
   return (
     <div className="rounded-2xl bg-surface-sunken/70 border border-surface-border/60 p-3">
       <div className="flex items-center gap-1.5">
-        <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden="true" />
-        <span className="text-[10px] uppercase tracking-widest text-ink-muted font-semibold">
-          {label}
-        </span>
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot}`} aria-hidden="true" />
+        <span className="text-[11px] text-ink-muted font-semibold truncate">{label}</span>
       </div>
       <div className="mt-1.5 text-[14px] font-semibold stat-num text-ink">{value}</div>
     </div>

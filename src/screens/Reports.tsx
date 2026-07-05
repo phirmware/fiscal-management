@@ -179,11 +179,11 @@ export function ReportsScreen() {
         <table className="mt-2 w-full text-xs">
           <thead className="text-ink-muted">
             <tr>
-              <th className="text-left py-1 pr-2">Month</th>
-              <th className="text-right py-1 px-2">Income</th>
-              <th className="text-right py-1 px-2">Budgeted</th>
-              <th className="text-right py-1 px-2">Spent</th>
-              <th className="text-right py-1 pl-2">Saved</th>
+              <th className="text-left py-1 pr-2 whitespace-nowrap">Month</th>
+              <th className="text-right py-1 px-2 whitespace-nowrap">Income</th>
+              <th className="text-right py-1 px-2 whitespace-nowrap">Budgeted</th>
+              <th className="text-right py-1 px-2 whitespace-nowrap">Spent</th>
+              <th className="text-right py-1 pl-2 whitespace-nowrap">Saved</th>
             </tr>
           </thead>
           <tbody>
@@ -203,11 +203,11 @@ export function ReportsScreen() {
         <table className="mt-2 w-full text-xs">
           <thead className="text-ink-muted">
             <tr>
-              <th className="text-left py-1 pr-2">Category</th>
-              <th className="text-left py-1 px-2">Group</th>
-              <th className="text-right py-1 px-2">Budgeted</th>
-              <th className="text-right py-1 px-2">Spent</th>
-              <th className="text-right py-1 pl-2">Available</th>
+              <th className="text-left py-1 pr-2 whitespace-nowrap">Category</th>
+              <th className="text-left py-1 px-2 whitespace-nowrap">Group</th>
+              <th className="text-right py-1 px-2 whitespace-nowrap">Budgeted</th>
+              <th className="text-right py-1 px-2 whitespace-nowrap">Spent</th>
+              <th className="text-right py-1 pl-2 whitespace-nowrap">Available</th>
             </tr>
           </thead>
           <tbody>

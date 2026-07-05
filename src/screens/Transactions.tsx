@@ -5,6 +5,7 @@ import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
 import { friendlyDayLabel, isValidIsoDate, monthLabel, todayIso } from "../app/utils/month.js";
 import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { Modal } from "../components/Modal.js";
+import { Select } from "../components/Select.js";
 import { showToast } from "../components/Toast.js";
 import type { Transaction } from "../types.js";
 
@@ -116,7 +117,7 @@ export function TransactionsScreen() {
           <span className="section-eyebrow">Spent in {monthLabel(month)}</span>
           <button
             type="button"
-            className="btn-accent btn-sm"
+            className="btn-secondary btn-sm"
             onClick={() => {
               setEditing(null);
               setOpen(true);
@@ -158,6 +159,7 @@ export function TransactionsScreen() {
           />
           <input
             type="search"
+            name="txn-search"
             className="input-base !pl-10 !py-2.5"
             placeholder="Search notes and categories…"
             value={query}
@@ -167,9 +169,8 @@ export function TransactionsScreen() {
           {query !== "" && (
             <button
               type="button"
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold
-                uppercase tracking-wide text-ink-muted hover:text-ink px-2 py-1 rounded-lg
-                focus-ring"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[12px] font-semibold
+                text-ink-muted hover:text-ink px-2 py-1 rounded-lg focus-ring"
               onClick={() => setQuery("")}
             >
               Clear
@@ -216,24 +217,26 @@ export function TransactionsScreen() {
         </div>
       ) : list.length === 0 ? (
         <div className="card p-10 text-center rise" style={{ "--rise-i": 3 } as React.CSSProperties}>
-          <div
-            className="w-12 h-12 rounded-full bg-accent/10 text-accent
-              flex items-center justify-center mx-auto mb-3 text-xl"
-            aria-hidden="true"
-          >
-            ✦
-          </div>
+          <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto mb-3 text-accent" aria-hidden="true">
+            <path
+              d="M12 3v18M5.5 8.5c0-1.93 2.91-3.5 6.5-3.5s6.5 1.57 6.5 3.5S15.59 12 12 12s-6.5 1.57-6.5 3.5S8.41 19 12 19s6.5-1.57 6.5-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+            />
+          </svg>
           {query.trim() !== "" || filterCat !== "all" ? (
             <>
-              <p className="text-[14px] font-semibold text-ink">No matches</p>
-              <p className="text-[12px] text-ink-muted mt-1">
+              <p className="text-[15px] font-semibold text-ink">No matches</p>
+              <p className="text-[13px] text-ink-muted mt-1">
                 Try clearing the search or the category filter.
               </p>
             </>
           ) : (
             <>
-              <p className="text-[14px] font-semibold text-ink">Nothing logged yet</p>
-              <p className="text-[12px] text-ink-muted mt-1">
+              <p className="text-[15px] font-semibold text-ink">Nothing logged yet</p>
+              <p className="text-[13px] text-ink-muted mt-1">
                 Tap <span className="font-semibold text-ink-soft">+ Add</span> to log your first spend.
               </p>
             </>
@@ -256,14 +259,14 @@ export function TransactionsScreen() {
                     after:content-[''] after:absolute after:inset-x-4 after:bottom-0
                     after:h-px after:bg-surface-border/50"
                 >
-                  <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-ink-soft">
+                  <span className="text-[12px] font-semibold text-ink-soft">
                     {group.label}
                   </span>
                   <span className="text-[11px] text-ink-muted stat-num font-medium">
                     {formatGBP(dayTotal)}
                   </span>
                 </div>
-                <ul className="ledger-panel">
+                <ul role="list" className="ledger-panel">
                   {group.items.map((t) => {
                     const cat = categoriesById.get(t.categoryId);
                     const groupName = cat?.group ?? "Wants";
@@ -394,7 +397,7 @@ function TxnModal({
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary" disabled={!canSave}>
+          <button type="submit" className="btn-accent" disabled={!canSave}>
             {editing ? "Save" : "Add"}
           </button>
         </>
@@ -413,6 +416,7 @@ function TxnModal({
             </span>
             <input
               type="text"
+              name="amount"
               inputMode="decimal"
               className="input-base !pl-7 text-xl font-semibold stat-num"
               value={amount}
@@ -424,8 +428,8 @@ function TxnModal({
         </label>
         <label className="block">
           <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Category</span>
-          <select
-            className="input-base"
+          <Select
+            name="category"
             value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}
           >
@@ -437,12 +441,13 @@ function TxnModal({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="block">
           <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Date</span>
           <input
             type="date"
+            name="date"
             className="input-base"
             value={date}
             onChange={(e) => setDate(e.target.value)}
@@ -463,6 +468,7 @@ function TxnModal({
           </span>
           <input
             className="input-base"
+            name="note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. Weekly shop"
@@ -526,7 +532,7 @@ function FilterChip({
     >
       <span>{label}</span>
       <span
-        className={`stat-num text-[11px] font-bold ${
+        className={`stat-num text-[11px] font-semibold ${
           active ? "" : "text-ink-muted"
         }`}
       >
@@ -549,7 +555,7 @@ function CategoryAvatar({ name, group }: { name: string; group: string }) {
   return (
     <div
       className="relative w-10 h-10 rounded-full flex items-center justify-center
-        flex-shrink-0 text-[12px] font-bold tracking-tight"
+        shrink-0 text-[12px] font-semibold tracking-tight"
       style={{
         background: `rgb(var(${varName}) / 0.14)`,
         color: `rgb(var(${varName}))`,

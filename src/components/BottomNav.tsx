@@ -89,14 +89,13 @@ export function BottomNav() {
     <div
       className="fixed bottom-0 left-1/2 z-30 -translate-x-1/2 w-full max-w-phone
         thumb-rise pt-2 px-3 print:hidden"
-      aria-hidden="false"
     >
       <nav
         className="card-glass nav-dock px-2 py-2"
         style={{ boxShadow: "var(--shadow-pop)" }}
         aria-label="Primary"
       >
-        <ul className="grid grid-cols-5">
+        <ul role="list" className="grid grid-cols-5">
           {ITEMS.map((item) => {
             const active = item.id === screen;
             return (
@@ -135,11 +134,10 @@ export function BottomNav() {
                         : undefined
                     }
                   >
-                    <item.Icon className="w-[22px] h-[22px]" />
+                    <item.Icon className="w-6 h-6 shrink-0" />
                   </span>
                   <span
-                    className={`text-[11px] leading-tight transition-colors
-                      ${active ? "text-ink font-semibold" : "text-ink-muted"}`}
+                    className={`text-[11px] font-medium ${active ? "text-ink" : "text-ink-muted"}`}
                   >
                     {item.label}
                   </span>

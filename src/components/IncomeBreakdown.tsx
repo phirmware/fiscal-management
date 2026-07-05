@@ -35,7 +35,7 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
             <button
               type="button"
               onClick={onSetIncome}
-              className="btn-accent btn-sm"
+              className="btn-secondary btn-sm"
             >
               + Add income
             </button>
@@ -58,7 +58,7 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
 
         <div className="hero-metrics mt-5">
           <div className="metric-tile">
-            <div className="text-[12px] font-semibold text-ink-soft">Spending budget</div>
+            <div className="text-[12px] font-semibold text-ink-soft truncate">Spending budget</div>
             <div className="mt-2 stat-num text-[18px] font-semibold text-ink">
               {spendingBudget > 0 ? "−" : ""}
               {formatGBP(Math.abs(spendingBudget))}
@@ -68,7 +68,7 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
             </div>
           </div>
           <div className="metric-tile">
-            <div className="text-[12px] font-semibold text-ink-soft">Savings allocated</div>
+            <div className="text-[12px] font-semibold text-ink-soft truncate">Savings allocated</div>
             <div className="mt-2 stat-num text-[18px] font-semibold text-ink">
               {savingsAllocated > 0 ? "−" : ""}
               {formatGBP(Math.abs(savingsAllocated))}
@@ -94,9 +94,7 @@ export function IncomeBreakdown({ breakdown, incomeSet, onSetIncome }: IncomeBre
         >
           <div className="flex items-baseline justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[12px] font-bold uppercase tracking-[0.14em] text-ink-soft">
-                Not yet assigned
-              </div>
+              <div className="section-eyebrow text-ink-soft">Not yet assigned</div>
               <div className="text-[11px] text-ink-muted mt-1 leading-snug">
                 {naCaption}
               </div>

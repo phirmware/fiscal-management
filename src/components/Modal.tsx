@@ -16,12 +16,12 @@ interface ModalProps {
 
 function CloseIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
       <path
-        d="M6 6l12 12M18 6L6 18"
+        d="M4 4l8 8M12 4L4 12"
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -92,7 +92,7 @@ export function Modal({ open, onClose, title, children, footer, onSubmit }: Moda
   return (
     <div
       className="modal-backdrop-enter fixed inset-0 z-50 flex items-end sm:items-center
-        justify-center bg-ink/40 backdrop-blur-sm"
+        justify-center bg-black/45 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -101,7 +101,7 @@ export function Modal({ open, onClose, title, children, footer, onSubmit }: Moda
       <div
         ref={panelRef}
         className="modal-enter w-full max-w-phone bg-surface-card rounded-t-3xl sm:rounded-3xl
-          border border-surface-border flex flex-col max-h-[92vh]"
+          border border-surface-border flex flex-col max-h-[92dvh]"
         style={{ boxShadow: "var(--shadow-pop)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -116,7 +116,7 @@ export function Modal({ open, onClose, title, children, footer, onSubmit }: Moda
             onClick={onClose}
             aria-label="Close"
           >
-            <CloseIcon className="w-4 h-4" />
+            <CloseIcon className="w-4 h-4 shrink-0" />
           </button>
         </div>
         {onSubmit ? (

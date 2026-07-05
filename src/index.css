@@ -383,9 +383,10 @@ body::before {
   }
 
   /* ---------- Inputs ---------- */
+  /* 16px base font so mobile Safari never zooms the field on focus. */
   .input-base {
     @apply w-full rounded-2xl border border-surface-border bg-surface-card px-4 py-3
-      text-[15px] text-ink placeholder:text-ink-faint
+      text-base text-ink placeholder:text-ink-faint
       outline-none transition;
   }
   .input-base:hover {
@@ -401,12 +402,25 @@ body::before {
 
   /* ---------- Buttons ---------- */
   .btn {
-    @apply inline-flex items-center justify-center gap-1.5 px-4 py-2.5
+    @apply relative inline-flex items-center justify-center gap-1.5 px-3 py-2
       text-sm font-semibold tracking-tight
       transition select-none
       active:scale-[0.97] active:translate-y-px
       disabled:opacity-50 disabled:pointer-events-none;
     border-radius: 14px;
+  }
+  /* 48px minimum touch target on coarse pointers without growing the visual box. */
+  @media (pointer: coarse) {
+    .btn::after,
+    .btn-icon::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 48px);
+      height: max(100%, 48px);
+      transform: translate(-50%, -50%);
+    }
   }
   .btn:focus-visible {
     @apply outline-none;
@@ -457,7 +471,7 @@ body::before {
     border-radius: 12px;
   }
   .btn-icon {
-    @apply inline-flex items-center justify-center
+    @apply relative inline-flex items-center justify-center
       tap text-ink-soft transition
       hover:bg-surface-sunken hover:text-ink
       active:scale-[0.94] disabled:opacity-50 disabled:pointer-events-none;
@@ -470,8 +484,8 @@ body::before {
     letter-spacing: -0.01em;
   }
   .section-eyebrow {
-    @apply text-[11px] font-semibold text-ink-muted uppercase;
-    letter-spacing: 0.08em;
+    @apply text-[12px] font-semibold text-ink-muted;
+    letter-spacing: 0.01em;
   }
   .section-row {
     @apply flex items-center justify-between gap-3;
@@ -507,8 +521,8 @@ body::before {
     box-shadow: var(--shadow-pop);
   }
   .toast-action {
-    @apply ml-auto shrink-0 font-bold uppercase tracking-wide text-[11px]
-      px-2.5 py-1.5 rounded-lg transition focus-ring;
+    @apply ml-auto shrink-0 font-semibold text-[12px]
+      px-2.5 py-1.5 rounded-lg focus-ring;
     color: rgb(var(--c-accent));
     background: rgb(var(--c-surface) / 0.12);
   }
@@ -582,9 +596,6 @@ body::before {
   }
   .ledger-row:last-child {
     border-bottom: 0;
-  }
-  .ledger-row:hover {
-    background-color: rgb(var(--c-surface-sunken) / 0.36);
   }
   .ledger-row:focus-within {
     background-color: rgb(var(--c-accent) / 0.08);

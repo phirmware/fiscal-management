@@ -38,12 +38,7 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
       aria-label="Categories over budget"
     >
       <div className="flex items-start gap-3">
-        <div
-          className="flex-shrink-0 w-10 h-10 rounded-full bg-status-over/15 text-status-over
-            flex items-center justify-center"
-        >
-          <AlertIcon className="w-5 h-5" />
-        </div>
+        <AlertIcon className="w-5 h-5 shrink-0 mt-0.5 text-status-over" />
         <div className="min-w-0 flex-1">
           <h2 className="text-[14px] font-semibold text-ink tracking-tight">
             {rows.length === 1
@@ -57,23 +52,23 @@ export function OverspendPrompt({ rows, month }: OverspendPromptProps) {
         </div>
       </div>
 
-      <ul className="mt-4 flex flex-col gap-2">
+      <ul role="list" className="mt-4 flex flex-col gap-2">
         {rows.map((r) => (
           <li
             key={r.categoryId}
             className="flex items-center justify-between gap-2 rounded-2xl bg-surface-card
               border border-status-over/15 px-4 py-2.5"
           >
-            <div className="text-[13px] min-w-0">
-              <span className="font-semibold text-ink truncate">{r.name}</span>
-              <span className="ml-2 stat-num text-status-over font-semibold">
+            <div className="flex items-baseline gap-2 text-[13px] min-w-0">
+              <span className="font-semibold text-ink truncate min-w-0">{r.name}</span>
+              <span className="stat-num text-status-over font-semibold whitespace-nowrap">
                 −{formatGBP(r.amount)}
               </span>
             </div>
             <button
               type="button"
               onClick={() => setOpenFor(r)}
-              className="btn-accent btn-sm"
+              className="btn-secondary btn-sm shrink-0"
             >
               Resolve
             </button>

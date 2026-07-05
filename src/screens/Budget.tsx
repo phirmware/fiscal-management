@@ -65,7 +65,7 @@ export function BudgetScreen() {
         <div className="relative">
           <div className="section-row">
             <span className="section-eyebrow">Unallocated this month</span>
-            <button type="button" className="btn-accent btn-sm" onClick={() => setAddOpen(true)}>
+            <button type="button" className="btn-secondary btn-sm" onClick={() => setAddOpen(true)}>
               + Category
             </button>
           </div>
@@ -80,19 +80,19 @@ export function BudgetScreen() {
           </div>
           <div className="mt-5 grid grid-cols-3 gap-2.5 max-[380px]:grid-cols-1">
             <div className="metric-tile">
-              <div className="section-eyebrow text-ink-muted">Budgeted</div>
+              <div className="section-eyebrow text-ink-muted truncate">Budgeted</div>
               <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
                 {formatGBP(monthSummary.totalBudgeted)}
               </div>
             </div>
             <div className="metric-tile text-center">
-              <div className="section-eyebrow text-ink-muted">Spent</div>
+              <div className="section-eyebrow text-ink-muted truncate">Spent</div>
               <div className="mt-1.5 text-[16px] font-semibold stat-num text-ink">
                 {formatGBP(monthSummary.totalSpent)}
               </div>
             </div>
             <div className="metric-tile text-right">
-              <div className="section-eyebrow text-ink-muted">Left</div>
+              <div className="section-eyebrow text-ink-muted truncate">Left</div>
               <div
                 className={`mt-1.5 text-[16px] font-semibold stat-num ${
                   breakdown.leftToSpend < 0 ? "text-status-over" : "text-status-ok"
@@ -112,13 +112,16 @@ export function BudgetScreen() {
           style={{ background: "rgb(var(--c-accent) / 0.06)", "--rise-i": 1 } as React.CSSProperties}
         >
           <div className="flex items-start gap-3">
-            <div
-              className="flex-shrink-0 w-9 h-9 rounded-full bg-accent/15 text-accent
-                flex items-center justify-center font-semibold"
-              aria-hidden="true"
-            >
-              ↻
-            </div>
+            <svg viewBox="0 0 16 16" className="w-4 h-4 shrink-0 mt-0.5 text-accent" aria-hidden="true">
+              <path
+                d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89M13.5 1.5v3h-3"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
             <div>
               <h2 className="text-[14px] font-semibold text-ink tracking-tight">
                 {releases.length === 1
@@ -131,7 +134,7 @@ export function BudgetScreen() {
               </p>
             </div>
           </div>
-          <ul className="mt-4 flex flex-col gap-2">
+          <ul role="list" className="mt-4 flex flex-col gap-2">
             {releases.map((r) => (
               <li
                 key={r.categoryId}
@@ -200,7 +203,7 @@ export function BudgetScreen() {
                 </div>
                 {sharePct !== null && (
                   <div
-                    className="text-[10px] font-semibold uppercase tracking-widest mt-0.5"
+                    className="text-[11px] font-semibold mt-0.5"
                     style={{ color: `rgb(var(${groupVar}))` }}
                   >
                     {sharePct}% used
@@ -234,15 +237,18 @@ export function BudgetScreen() {
 
       {rows.length === 0 && (
         <div className="card p-10 text-center rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
-          <div
-            className="w-12 h-12 rounded-full bg-accent/10 text-accent
-              flex items-center justify-center mx-auto mb-3 text-xl"
-            aria-hidden="true"
-          >
-            ⛁
-          </div>
-          <p className="text-[14px] font-semibold text-ink">No categories for this month yet</p>
-          <p className="text-[12px] text-ink-muted mt-1 leading-snug">
+          <svg viewBox="0 0 24 24" className="w-6 h-6 mx-auto mb-3 text-accent" aria-hidden="true">
+            <ellipse cx="12" cy="6" rx="7" ry="3" fill="none" stroke="currentColor" strokeWidth={1.8} />
+            <path
+              d="M5 6v6c0 1.66 3.13 3 7 3s7-1.34 7-3V6M5 12v6c0 1.66 3.13 3 7 3s7-1.34 7-3v-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              strokeLinecap="round"
+            />
+          </svg>
+          <p className="text-[15px] font-semibold text-ink">No categories for this month yet</p>
+          <p className="text-[13px] text-ink-muted mt-1 leading-snug">
             Categories are the envelopes your money lives in.
           </p>
           <button type="button" className="btn-accent mt-4" onClick={() => setAddOpen(true)}>
@@ -328,7 +334,7 @@ function AddCategoryModal({
           <button type="button" className="btn-ghost" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary" disabled={!name.trim()}>
+          <button type="submit" className="btn-accent" disabled={!name.trim()}>
             Add
           </button>
         </>
@@ -339,6 +345,7 @@ function AddCategoryModal({
           <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Name</span>
           <input
             className="input-base"
+            name="category-name"
             value={name}
             autoFocus
             onChange={(e) => setName(e.target.value)}
@@ -376,6 +383,7 @@ function AddCategoryModal({
           </span>
           <input
             className="input-base stat-num"
+            name="monthly-budget"
             inputMode="decimal"
             value={monthlyBudget}
             onChange={(e) => setMonthlyBudget(e.target.value)}
@@ -400,6 +408,7 @@ function AddCategoryModal({
             </span>
             <input
               className="input-base stat-num"
+              name="annual-target"
               inputMode="decimal"
               value={annualTarget}
               onChange={(e) => setAnnualTarget(e.target.value)}

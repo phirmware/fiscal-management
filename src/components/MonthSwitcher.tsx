@@ -4,12 +4,12 @@ import { currentMonth } from "../app/state.js";
 
 function ChevronLeft({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <svg viewBox="0 0 20 20" className={className} aria-hidden="true">
       <path
-        d="M15 6l-6 6 6 6"
+        d="M12.5 5 7.5 10l5 5"
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -19,12 +19,12 @@ function ChevronLeft({ className }: { className?: string }) {
 
 function ChevronRight({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+    <svg viewBox="0 0 20 20" className={className} aria-hidden="true">
       <path
-        d="M9 6l6 6-6 6"
+        d="M7.5 5 12.5 10l-5 5"
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={1.8}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -51,7 +51,7 @@ export function MonthSwitcher() {
         onClick={() => setSelectedMonth(prevMonth(month))}
         aria-label="Previous month"
       >
-        <ChevronLeft className="w-5 h-5" />
+        <ChevronLeft className="w-5 h-5 shrink-0" />
       </button>
       <div className="flex flex-col items-center min-w-0 px-3">
         <div className="flex items-baseline gap-1.5">
@@ -69,8 +69,8 @@ export function MonthSwitcher() {
           </button>
         ) : (
           <span
-            className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase
-              tracking-[0.16em] text-accent mt-0.5 pulse-now"
+            className="inline-flex items-center gap-1.5 text-[11px] font-semibold
+              text-accent mt-0.5 pulse-now"
           >
             <span
               className="w-1.5 h-1.5 rounded-full bg-status-ok"
@@ -86,7 +86,7 @@ export function MonthSwitcher() {
         onClick={() => setSelectedMonth(nextMonth(month))}
         aria-label="Next month"
       >
-        <ChevronRight className="w-5 h-5" />
+        <ChevronRight className="w-5 h-5 shrink-0" />
       </button>
     </div>
   );
