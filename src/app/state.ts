@@ -1,4 +1,4 @@
-import type { BudgetState, Month } from "../types.js";
+import type { BudgetState, IsoDate, Month } from "../types.js";
 
 export interface OverspendAck {
   categoryId: string;
@@ -22,6 +22,71 @@ export interface BudgetReallocation {
   delta: number;
 }
 
+/**
+ * Wealth tracking lives beside the budget, not inside it: the budget engine
+ * models monthly flows, while these are point-in-time balances the user
+ * enters by hand (no bank APIs yet).
+ */
+export type AccountKind =
+  | "current"
+  | "savings"
+  | "investment"
+  | "pension"
+  | "property"
+  | "crypto"
+  | "otherAsset"
+  | "creditCard"
+  | "loan"
+  | "mortgage"
+  | "studentLoan"
+  | "otherDebt";
+
+export interface WealthAccount {
+  id: string;
+  name: string;
+  kind: AccountKind;
+  institution?: string;
+  archived: boolean;
+  /** Annual rate as a percentage — APR for debts, AER for savings. */
+  rate?: number;
+  /** Credit cards only. */
+  creditLimit?: number;
+  /** Debts: monthly repayment. Assets: monthly contribution. */
+  monthlyPayment?: number;
+  /** Counts toward the emergency fund. Unflagged cash is used when none are flagged. */
+  emergencyFund?: boolean;
+  createdAt: IsoDate;
+}
+
+/**
+ * A balance as of a date. Liabilities are stored as positive amounts owed;
+ * the sign is applied from the account kind. At most one per account per day.
+ */
+export interface BalanceSnapshot {
+  id: string;
+  accountId: string;
+  date: IsoDate;
+  balance: number;
+  /** Money paid in since the previous snapshot — separates growth from deposits. */
+  contribution?: number;
+}
+
+export interface FinancialProfile {
+  birthYear?: number;
+  grossAnnualIncome?: number;
+  emergencyMonthsTarget: number;
+}
+
+export interface WealthState {
+  accounts: WealthAccount[];
+  snapshots: BalanceSnapshot[];
+  profile: FinancialProfile;
+}
+
+export function emptyWealthState(): WealthState {
+  return { accounts: [], snapshots: [], profile: { emergencyMonthsTarget: 6 } };
+}
+
 export type ThemePreference = "light" | "dark" | "liquid" | "system";
 
 export interface UiState {
@@ -37,6 +102,7 @@ export interface AppState {
   overspendAcks: OverspendAck[];
   releaseAcks: ReleaseAck[];
   reallocations: BudgetReallocation[];
+  wealth: WealthState;
   ui: UiState;
 }
 
@@ -62,6 +128,7 @@ export function emptyAppState(now: Date = new Date()): AppState {
     overspendAcks: [],
     releaseAcks: [],
     reallocations: [],
+    wealth: emptyWealthState(),
     ui: {
       selectedMonth: currentMonth(now),
       lastUsedCategoryId: null,

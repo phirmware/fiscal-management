@@ -39,3 +39,14 @@ export function parseMoneyInput(raw: string): number | null {
   if (!Number.isFinite(n)) return null;
   return roundMoney(n);
 }
+
+/** Axis-friendly money: £850, £12k, £1.2m. Keeps a true minus sign. */
+export function formatGBPShort(amount: number): string {
+  if (!Number.isFinite(amount)) return "—";
+  const sign = amount < 0 ? "−" : "";
+  const a = Math.abs(amount);
+  if (a >= 1_000_000) return `${sign}£${(a / 1_000_000).toFixed(a >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}m`;
+  if (a >= 10_000) return `${sign}£${Math.round(a / 1000)}k`;
+  if (a >= 1000) return `${sign}£${(a / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `${sign}£${Math.round(a)}`;
+}

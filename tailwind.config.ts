@@ -43,6 +43,14 @@ export default {
           wants: withVar("--c-group-wants"),
           savings: withVar("--c-group-savings"),
         },
+        asset: {
+          cash: withVar("--c-asset-cash"),
+          invest: withVar("--c-asset-invest"),
+          pension: withVar("--c-asset-pension"),
+          property: withVar("--c-asset-property"),
+          other: withVar("--c-asset-other"),
+        },
+        debt: withVar("--c-debt"),
       },
       fontFamily: {
         sans: [

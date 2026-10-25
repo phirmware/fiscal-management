@@ -14,7 +14,16 @@ import type {
   Transaction,
   TypeSegment,
 } from "../types.js";
-import type { AppState, OverspendAck, ReleaseAck, ThemePreference } from "./state.js";
+import type {
+  AccountKind,
+  AppState,
+  BalanceSnapshot,
+  FinancialProfile,
+  OverspendAck,
+  ReleaseAck,
+  ThemePreference,
+  WealthAccount,
+} from "./state.js";
 import {
   exportAppStateJson,
   importAppStateJson,
@@ -23,7 +32,7 @@ import {
   saveAppState,
 } from "./storage.js";
 
-export type Screen = "home" | "budget" | "transactions" | "insights" | "settings";
+export type Screen = "home" | "budget" | "transactions" | "wealth" | "insights" | "settings";
 
 interface AppStore extends AppState {
   selectedScreen: Screen;
@@ -80,6 +89,28 @@ interface AppStore extends AppState {
   acknowledgeRelease: (categoryId: string, month: Month) => void;
 
   clearReallocations: (categoryId: string, month: Month) => void;
+
+  addAccount: (input: {
+    name: string;
+    kind: AccountKind;
+    institution?: string;
+    rate?: number;
+    creditLimit?: number;
+    monthlyPayment?: number;
+    emergencyFund?: boolean;
+    openingBalance?: number;
+    date: IsoDate;
+  }) => string;
+  updateAccount: (id: string, patch: Partial<Omit<WealthAccount, "id" | "createdAt">>) => void;
+  deleteAccount: (id: string) => void;
+  recordBalance: (input: {
+    accountId: string;
+    date: IsoDate;
+    balance: number;
+    contribution?: number;
+  }) => void;
+  deleteSnapshot: (id: string) => void;
+  setProfile: (patch: Partial<FinancialProfile>) => void;
 
   completeOnboarding: () => void;
   setTheme: (theme: ThemePreference) => void;
@@ -142,6 +173,27 @@ function upsertSavingsEntry(
   }
   const next = entries.slice();
   next[idx] = { accountId, month, amount };
+  return next;
+}
+
+/** One snapshot per account per day — re-entering today's balance replaces it. */
+function upsertSnapshot(
+  snapshots: BalanceSnapshot[],
+  input: { accountId: string; date: IsoDate; balance: number; contribution?: number },
+): BalanceSnapshot[] {
+  const idx = snapshots.findIndex(
+    (x) => x.accountId === input.accountId && x.date === input.date,
+  );
+  const snap: BalanceSnapshot = {
+    id: idx === -1 ? newId() : snapshots[idx]!.id,
+    accountId: input.accountId,
+    date: input.date,
+    balance: input.balance,
+    ...(input.contribution ? { contribution: input.contribution } : {}),
+  };
+  if (idx === -1) return [...snapshots, snap];
+  const next = snapshots.slice();
+  next[idx] = snap;
   return next;
 }
 
@@ -360,6 +412,52 @@ export const useAppStore = create<AppStore>()(
         ),
       })),
 
+    addAccount: ({ openingBalance, date, ...rest }) => {
+      const id = newId();
+      const account: WealthAccount = { id, archived: false, createdAt: date, ...rest };
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          accounts: [...s.wealth.accounts, account],
+          snapshots:
+            openingBalance === undefined
+              ? s.wealth.snapshots
+              : upsertSnapshot(s.wealth.snapshots, { accountId: id, date, balance: openingBalance }),
+        },
+      }));
+      return id;
+    },
+
+    updateAccount: (id, patch) =>
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          accounts: s.wealth.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        },
+      })),
+
+    deleteAccount: (id) =>
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          accounts: s.wealth.accounts.filter((a) => a.id !== id),
+          snapshots: s.wealth.snapshots.filter((x) => x.accountId !== id),
+        },
+      })),
+
+    recordBalance: (input) =>
+      set((s) => ({
+        wealth: { ...s.wealth, snapshots: upsertSnapshot(s.wealth.snapshots, input) },
+      })),
+
+    deleteSnapshot: (id) =>
+      set((s) => ({
+        wealth: { ...s.wealth, snapshots: s.wealth.snapshots.filter((x) => x.id !== id) },
+      })),
+
+    setProfile: (patch) =>
+      set((s) => ({ wealth: { ...s.wealth, profile: { ...s.wealth.profile, ...patch } } })),
+
     completeOnboarding: () => set((s) => ({ ui: { ...s.ui, hasOnboarded: true } })),
     setTheme: (theme) => set((s) => ({ ui: { ...s.ui, theme } })),
 
@@ -371,6 +469,7 @@ export const useAppStore = create<AppStore>()(
         overspendAcks: s.overspendAcks,
         releaseAcks: s.releaseAcks,
         reallocations: s.reallocations,
+        wealth: s.wealth,
         ui: s.ui,
       };
       return exportAppStateJson(snapshot);
@@ -384,6 +483,7 @@ export const useAppStore = create<AppStore>()(
         overspendAcks: next.overspendAcks,
         releaseAcks: next.releaseAcks,
         reallocations: next.reallocations,
+        wealth: next.wealth,
         ui: next.ui,
       });
     },
@@ -397,6 +497,7 @@ export const useAppStore = create<AppStore>()(
         overspendAcks: fresh.overspendAcks,
         releaseAcks: fresh.releaseAcks,
         reallocations: fresh.reallocations,
+        wealth: fresh.wealth,
         ui: fresh.ui,
         selectedScreen: "home",
       });
@@ -411,6 +512,7 @@ useAppStore.subscribe(
     overspendAcks: s.overspendAcks,
     releaseAcks: s.releaseAcks,
     reallocations: s.reallocations,
+    wealth: s.wealth,
     ui: s.ui,
   }),
   (slice) => {
@@ -422,6 +524,7 @@ useAppStore.subscribe(
       a.overspendAcks === b.overspendAcks &&
       a.releaseAcks === b.releaseAcks &&
       a.reallocations === b.reallocations &&
+      a.wealth === b.wealth &&
       a.ui === b.ui,
   },
 );

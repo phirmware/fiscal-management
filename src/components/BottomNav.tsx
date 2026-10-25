@@ -60,15 +60,14 @@ const InsightsIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const SettingsIcon = ({ className }: { className?: string }) => (
+const WealthIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-    <circle cx="12" cy="12" r="3" className={STROKE} strokeWidth={1.8} />
     <path
       className={STROKE}
       strokeWidth={1.8}
       strokeLinecap="round"
       strokeLinejoin="round"
-      d="M19.4 15a1.6 1.6 0 0 0 .3 1.7l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.6 1.6 0 0 0-1.7-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.7.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.6 1.6 0 0 0 .3-1.7 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.7l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.6 1.6 0 0 0 1.7.3h.1a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5h.1a1.6 1.6 0 0 0 1.7-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.6 1.6 0 0 0-.3 1.7v.1a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"
+      d="M3 21h18M5 21V10m4.67 11V10m4.66 11V10M19 21V10M2.5 8.5 12 3l9.5 5.5Z"
     />
   </svg>
 );
@@ -77,8 +76,8 @@ const ITEMS: NavItem[] = [
   { id: "home", label: "Home", Icon: HomeIcon },
   { id: "budget", label: "Budget", Icon: BudgetIcon },
   { id: "transactions", label: "Activity", Icon: ActivityIcon },
+  { id: "wealth", label: "Wealth", Icon: WealthIcon },
   { id: "insights", label: "Insights", Icon: InsightsIcon },
-  { id: "settings", label: "Settings", Icon: SettingsIcon },
 ];
 
 export function BottomNav() {

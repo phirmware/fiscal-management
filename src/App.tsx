@@ -8,6 +8,7 @@ import { HomeScreen } from "./screens/Home.js";
 import { InsightsScreen } from "./screens/Insights.js";
 import { SettingsScreen } from "./screens/Settings.js";
 import { TransactionsScreen } from "./screens/Transactions.js";
+import { WealthScreen } from "./screens/Wealth.js";
 
 export function App() {
   useTheme();
@@ -34,6 +35,7 @@ export function App() {
           {screen === "home" && <HomeScreen />}
           {screen === "budget" && <BudgetScreen />}
           {screen === "transactions" && <TransactionsScreen />}
+          {screen === "wealth" && <WealthScreen />}
           {screen === "insights" && <InsightsScreen />}
           {screen === "settings" && <SettingsScreen />}
         </div>

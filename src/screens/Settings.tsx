@@ -3,6 +3,7 @@ import { resolveType } from "../engine.js";
 import { useAppStore } from "../app/store.js";
 import { Modal } from "../components/Modal.js";
 import { showToast } from "../components/Toast.js";
+import { parseMoneyInput } from "../app/utils/money.js";
 import { monthLabel } from "../app/utils/month.js";
 import type { CategoryType } from "../types.js";
 import type { ThemePreference } from "../app/state.js";
@@ -108,6 +109,8 @@ export function SettingsScreen() {
           Liquid is a glassy dark variant with vivid colour bleed — best on OLED screens.
         </p>
       </section>
+
+      <ProfileSection />
 
       <section className="card p-5 rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
         <div className="section-row">
@@ -340,5 +343,99 @@ export function SettingsScreen() {
         </p>
       </Modal>
     </div>
+  );
+}
+
+function ProfileSection() {
+  const profile = useAppStore((s) => s.wealth.profile);
+  const setProfile = useAppStore((s) => s.setProfile);
+  const [birthYear, setBirthYear] = useState(profile.birthYear ? String(profile.birthYear) : "");
+  const [salary, setSalary] = useState(profile.grossAnnualIncome ? String(profile.grossAnnualIncome) : "");
+
+  function commitBirthYear() {
+    const y = Number(birthYear);
+    const thisYear = new Date().getFullYear();
+    if (birthYear.trim() === "") setProfile({ birthYear: undefined });
+    else if (Number.isInteger(y) && y > 1900 && y <= thisYear - 14) setProfile({ birthYear: y });
+    else setBirthYear(profile.birthYear ? String(profile.birthYear) : "");
+  }
+
+  function commitSalary() {
+    const v = parseMoneyInput(salary);
+    setProfile({ grossAnnualIncome: v !== null && v > 0 ? v : undefined });
+    if (v === null || v <= 0) setSalary("");
+  }
+
+  return (
+    <section className="card p-5 rise" style={{ "--rise-i": 1 } as React.CSSProperties}>
+      <h2 className="section-title">Financial profile</h2>
+      <p className="text-[12px] text-ink-muted mt-1 leading-snug">
+        Powers the health check on Wealth. Stays on this device.
+      </p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="profile-birth" className="block text-[13px] font-medium text-ink-soft mb-1.5">
+            Birth year
+          </label>
+          <input
+            id="profile-birth"
+            name="profile-birth"
+            type="text"
+            inputMode="numeric"
+            className="input-base stat-num"
+            placeholder="e.g. 1994"
+            value={birthYear}
+            onChange={(e) => setBirthYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onBlur={commitBirthYear}
+          />
+        </div>
+        <div>
+          <label htmlFor="profile-salary" className="block text-[13px] font-medium text-ink-soft mb-1.5">
+            Gross salary / yr
+          </label>
+          <div className="relative">
+            <span
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted font-semibold pointer-events-none"
+              aria-hidden="true"
+            >
+              £
+            </span>
+            <input
+              id="profile-salary"
+              name="profile-salary"
+              type="text"
+              inputMode="decimal"
+              className="input-base !pl-8 stat-num"
+              placeholder="45000"
+              value={salary}
+              onChange={(e) => setSalary(e.target.value)}
+              onBlur={commitSalary}
+            />
+          </div>
+        </div>
+      </div>
+      <p className="text-[11px] text-ink-muted mt-2 leading-snug">
+        Used for the retirement benchmark and debt-to-income. Without a salary, net income from your budget is used.
+      </p>
+
+      <p className="mt-5 text-[13px] font-medium text-ink-soft">Emergency fund target</p>
+      <div className="mt-2 seg grid-cols-4" role="radiogroup" aria-label="Emergency fund target">
+        {[3, 6, 9, 12].map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="radio"
+            aria-checked={profile.emergencyMonthsTarget === m}
+            onClick={() => setProfile({ emergencyMonthsTarget: m })}
+            className="seg-btn !text-[12px]"
+          >
+            {m} months
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-ink-muted mt-2 leading-snug">
+        3 months suits stable, dual-income households; 6+ if you're self-employed, a single earner, or have dependants.
+      </p>
+    </section>
   );
 }

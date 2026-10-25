@@ -47,6 +47,15 @@
   --c-group-wants: 206 108 4;
   --c-group-savings: 4 142 100;
 
+  /* Wealth — asset classes + debt. Distinct from budget groups so the net
+     worth views never read as "Needs/Wants/Savings". */
+  --c-asset-cash: 2 132 199;
+  --c-asset-invest: 79 70 229;
+  --c-asset-pension: 13 148 136;
+  --c-asset-property: 180 120 8;
+  --c-asset-other: 100 116 139;
+  --c-debt: 217 34 76;
+
   /* Crisp contact + quiet ambient — cards should sit, not float in fog. */
   --shadow-card:
     inset 0 1px 0 0 rgb(255 255 255 / 0.95),
@@ -107,6 +116,13 @@
   --c-group-needs: 96 200 252;
   --c-group-wants: 251 191 36;
   --c-group-savings: 80 232 196;
+
+  --c-asset-cash: 96 200 252;
+  --c-asset-invest: 167 139 250;
+  --c-asset-pension: 80 232 196;
+  --c-asset-property: 255 200 96;
+  --c-asset-other: 148 163 184;
+  --c-debt: 255 132 168;
 
   /* Glass surface — inner light + ambient depth + faint outer glow. */
   --shadow-card:
@@ -199,6 +215,13 @@
   --c-group-needs: 96 165 250;
   --c-group-wants: 251 191 36;
   --c-group-savings: 52 211 153;
+
+  --c-asset-cash: 56 189 248;
+  --c-asset-invest: 152 159 253;
+  --c-asset-pension: 45 212 191;
+  --c-asset-property: 251 191 36;
+  --c-asset-other: 148 163 184;
+  --c-debt: 251 113 133;
 
   /* Cards in dark mode read as raised glass surfaces. */
   --shadow-card:

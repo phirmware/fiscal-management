@@ -19,6 +19,7 @@ import { IncomeBreakdown } from "../components/IncomeBreakdown.js";
 import { Modal } from "../components/Modal.js";
 import { OverspendPrompt } from "../components/OverspendPrompt.js";
 import { showToast } from "../components/Toast.js";
+import { WealthGlance } from "../components/WealthGlance.js";
 
 const GROUP_VAR: Record<string, string> = {
   Needs: "--c-group-needs",
@@ -222,6 +223,10 @@ export function HomeScreen() {
           spendingBudget={breakdown.spendingBudget}
           spendingSpent={breakdown.spendingSpent}
         />
+      </div>
+
+      <div className="rise" style={rise()}>
+        <WealthGlance />
       </div>
 
       <section className="dashboard-band rise" style={rise()}>

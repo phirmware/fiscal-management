@@ -1,5 +1,5 @@
 import type { AppState } from "./state.js";
-import { APP_STATE_VERSION, emptyAppState } from "./state.js";
+import { APP_STATE_VERSION, emptyAppState, emptyWealthState } from "./state.js";
 
 const STORAGE_KEY = "budget.appstate.v1";
 
@@ -53,6 +53,12 @@ export function normaliseAppState(input: unknown): AppState {
     overspendAcks: src.overspendAcks ?? [],
     releaseAcks: src.releaseAcks ?? [],
     reallocations: src.reallocations ?? [],
+    // Older backups predate wealth tracking — they load with an empty wealth slice.
+    wealth: {
+      accounts: src.wealth?.accounts ?? [],
+      snapshots: src.wealth?.snapshots ?? [],
+      profile: { ...emptyWealthState().profile, ...(src.wealth?.profile ?? {}) },
+    },
     ui: {
       selectedMonth: src.ui?.selectedMonth ?? base.ui.selectedMonth,
       lastUsedCategoryId: src.ui?.lastUsedCategoryId ?? null,

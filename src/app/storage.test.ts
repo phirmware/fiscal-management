@@ -95,4 +95,18 @@ describe("storage", () => {
     expect(partial.overspendAcks).toEqual([]);
     expect(partial.ui.selectedMonth).toMatch(/^\d{4}-\d{2}$/);
   });
+
+  it("loads pre-wealth backups with an empty wealth slice and default profile", () => {
+    const old = importAppStateJson(JSON.stringify({ budget: { categories: [] }, ui: {} }));
+    expect(old.wealth.accounts).toEqual([]);
+    expect(old.wealth.snapshots).toEqual([]);
+    expect(old.wealth.profile.emergencyMonthsTarget).toBe(6);
+  });
+
+  it("keeps a saved profile while filling missing defaults", () => {
+    const loaded = importAppStateJson(
+      JSON.stringify({ wealth: { accounts: [], snapshots: [], profile: { birthYear: 1990 } } }),
+    );
+    expect(loaded.wealth.profile).toEqual({ birthYear: 1990, emergencyMonthsTarget: 6 });
+  });
 });

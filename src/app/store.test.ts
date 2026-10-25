@@ -252,4 +252,50 @@ describe("app store", () => {
     const after = computeMonth(useAppStore.getState().budget, M);
     expect(after).toEqual(before);
   });
+
+  describe("wealth", () => {
+    it("adds an account with an opening balance snapshot", () => {
+      const s = useAppStore.getState();
+      const id = s.addAccount({ name: "Monzo", kind: "current", openingBalance: 1200, date: "2026-05-01" });
+      const w = useAppStore.getState().wealth;
+      expect(w.accounts).toHaveLength(1);
+      expect(w.accounts[0]!.id).toBe(id);
+      expect(w.snapshots).toEqual([
+        expect.objectContaining({ accountId: id, date: "2026-05-01", balance: 1200 }),
+      ]);
+    });
+
+    it("replaces a same-day balance instead of duplicating it", () => {
+      const s = useAppStore.getState();
+      const id = s.addAccount({ name: "ISA", kind: "investment", openingBalance: 100, date: "2026-05-01" });
+      s.recordBalance({ accountId: id, date: "2026-05-01", balance: 150 });
+      s.recordBalance({ accountId: id, date: "2026-06-01", balance: 300, contribution: 100 });
+      const snaps = useAppStore.getState().wealth.snapshots;
+      expect(snaps).toHaveLength(2);
+      expect(snaps.find((x) => x.date === "2026-05-01")!.balance).toBe(150);
+      expect(snaps.find((x) => x.date === "2026-06-01")!.contribution).toBe(100);
+    });
+
+    it("deleting an account removes its history", () => {
+      const s = useAppStore.getState();
+      const id = s.addAccount({ name: "Card", kind: "creditCard", openingBalance: 500, date: "2026-05-01" });
+      s.deleteAccount(id);
+      const w = useAppStore.getState().wealth;
+      expect(w.accounts).toEqual([]);
+      expect(w.snapshots).toEqual([]);
+    });
+
+    it("round-trips wealth through export/import and clears it on reset", () => {
+      const s = useAppStore.getState();
+      s.addAccount({ name: "Pension", kind: "pension", openingBalance: 40000, date: "2026-05-01" });
+      s.setProfile({ birthYear: 1992, emergencyMonthsTarget: 3 });
+      const json = s.exportJson();
+      s.resetAll();
+      expect(useAppStore.getState().wealth.accounts).toEqual([]);
+      useAppStore.getState().importJson(json);
+      const w = useAppStore.getState().wealth;
+      expect(w.accounts[0]!.name).toBe("Pension");
+      expect(w.profile).toEqual({ birthYear: 1992, emergencyMonthsTarget: 3 });
+    });
+  });
 });
