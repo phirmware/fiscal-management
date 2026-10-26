@@ -132,6 +132,9 @@ interface AppStore extends AppState {
   addMove: (input: MoveInput) => string | null;
   editMove: (id: string, input: MoveInput) => boolean;
   deleteMove: (id: string) => void;
+  /** Turns logged spending into moves in one step. Null if any entry can't convert. */
+  convertToMoves: (input: ConvertInput) => ConvertResult | null;
+  undoConvert: (result: ConvertResult) => void;
   addRecurring: (input: { template: RecurringTemplate; day: number; startMonth: Month }) => string | null;
   setRecurringPaused: (id: string, paused: boolean) => void;
   deleteRecurring: (id: string) => void;
@@ -255,6 +258,90 @@ function settlePrefills(s: AppState, categoryIds: string[], month: Month): Month
     if (prefill) budgets = upsertBudget(budgets, id, month, prefill.amount);
   }
   return budgets;
+}
+
+export interface ConvertInput {
+  transactionIds: string[];
+  toCategoryId: string;
+  /** Where the budget comes from for entries logged in the target category itself. */
+  fromCategoryId?: string;
+  /** Where the money went, for entries paid from an account. Unset = budget only. */
+  toAccountId?: string;
+}
+
+export interface ConvertPlan {
+  moves: BudgetMove[];
+  removed: Transaction[];
+  /** The target category's start month, moved earlier so older entries can land in it. */
+  extendTo: Month | null;
+  total: number;
+  /** Paid-from accounts whose balance goes back up because no destination was chosen. */
+  restored: Map<string, number>;
+}
+
+export interface ConvertResult {
+  moveIds: string[];
+  removed: Transaction[];
+  /** Target category's segments before the conversion, if they changed. */
+  prevSegments: { categoryId: string; typeSegments: TypeSegment[] } | null;
+}
+
+/**
+ * Works out exactly what converting these spends would do, without changing
+ * anything. Each spend becomes a move on the same date for the same amount,
+ * from the category it was logged in (or `fromCategoryId` when it was logged
+ * in the target) into the target. A spend paid from an account becomes an
+ * account transfer to `toAccountId`, keeping its log time so it sits in the
+ * same place against balance check-ins. All or nothing: any entry that can't
+ * convert returns an error instead of a partial plan.
+ */
+export function planConversion(s: AppState, input: ConvertInput, ids: () => string = newId): ConvertPlan | string {
+  const byId = new Map(s.budget.transactions.map((t) => [t.id, t]));
+  const removed: Transaction[] = [];
+  for (const id of new Set(input.transactionIds)) {
+    const t = byId.get(id);
+    if (!t) return "Some entries no longer exist.";
+    if (!(t.amount > 0)) return "Refunds can't be converted.";
+    removed.push(t);
+  }
+  if (removed.length === 0) return "Choose at least one entry.";
+  const target = s.budget.categories.find((c) => c.id === input.toCategoryId);
+  if (!target || target.archived) return "Choose the category to move into.";
+  if (input.toAccountId && !s.wealth.accounts.some((a) => a.id === input.toAccountId)) return "Choose an existing account.";
+
+  const earliest = removed.reduce((m, t) => (t.date.slice(0, 7) < m ? t.date.slice(0, 7) : m), "9999-99");
+  const start = target.typeSegments[0]?.fromMonth ?? earliest;
+  const extendTo = earliest < start ? earliest : null;
+  const categories = extendTo
+    ? s.budget.categories.map((c) =>
+        c.id === target.id ? { ...c, typeSegments: c.typeSegments.map((g, i) => (i === 0 ? { ...g, fromMonth: extendTo } : g)) } : c,
+      )
+    : s.budget.categories;
+  const accountIds = new Set(s.wealth.accounts.map((a) => a.id));
+
+  const moves: BudgetMove[] = [];
+  const restored = new Map<string, number>();
+  for (const t of removed) {
+    const from = t.categoryId === target.id ? input.fromCategoryId : t.categoryId;
+    if (!from) return `Some entries are already in ${target.name} — choose where their budget comes from.`;
+    const paidFrom = t.accountId && accountIds.has(t.accountId) ? t.accountId : undefined;
+    const withAccounts = paidFrom && input.toAccountId && paidFrom !== input.toAccountId;
+    if (paidFrom && !withAccounts) restored.set(paidFrom, roundMoney((restored.get(paidFrom) ?? 0) + t.amount));
+    const mi: MoveInput = {
+      date: t.date,
+      amount: t.amount,
+      fromCategoryId: from,
+      toCategoryId: target.id,
+      ...(withAccounts ? { fromAccountId: paidFrom, toAccountId: input.toAccountId } : {}),
+      ...(t.note ? { note: t.note } : {}),
+    };
+    if (!validMove(mi, categories, accountIds)) {
+      const name = s.budget.categories.find((c) => c.id === from)?.name ?? "a deleted category";
+      return `The ${t.date} entry can't move from ${name} — it may be archived or not exist in that month.`;
+    }
+    moves.push(buildMove(ids(), mi, t.loggedAt ?? Date.now()));
+  }
+  return { moves, removed, extendTo, total: roundMoney(removed.reduce((a, t) => a + t.amount, 0)), restored };
 }
 
 /** Every account a repeating rule would touch. */
@@ -705,6 +792,66 @@ export const useAppStore = create<AppStore>()(
 
     deleteMove: (id) =>
       set((s) => ({ wealth: { ...s.wealth, moves: s.wealth.moves.filter((m) => m.id !== id) } })),
+
+    convertToMoves: (input) => {
+      const s0 = get();
+      const plan = planConversion(s0, input);
+      if (typeof plan === "string") return null;
+      const target = s0.budget.categories.find((c) => c.id === input.toCategoryId)!;
+      set((s) => {
+        const categories = plan.extendTo
+          ? s.budget.categories.map((c) =>
+              c.id === target.id
+                ? { ...c, typeSegments: c.typeSegments.map((g, i) => (i === 0 ? { ...g, fromMonth: plan.extendTo! } : g)) }
+                : c,
+            )
+          : s.budget.categories;
+        // Settle suggested budgets month by month before any move lands on them.
+        let tmp: AppState = s;
+        const months = new Map<Month, Set<string>>();
+        for (const m of plan.moves) {
+          const set = months.get(m.date.slice(0, 7)) ?? new Set<string>();
+          set.add(m.fromCategoryId).add(m.toCategoryId);
+          months.set(m.date.slice(0, 7), set);
+        }
+        for (const [month, ids] of months) {
+          tmp = { ...tmp, budget: { ...tmp.budget, budgets: settlePrefills(tmp, [...ids], month) } };
+        }
+        const gone = new Set(plan.removed.map((t) => t.id));
+        return {
+          budget: {
+            ...s.budget,
+            categories,
+            budgets: tmp.budget.budgets,
+            transactions: s.budget.transactions.filter((t) => !gone.has(t.id)),
+          },
+          wealth: { ...s.wealth, moves: [...s.wealth.moves, ...plan.moves] },
+        };
+      });
+      return {
+        moveIds: plan.moves.map((m) => m.id),
+        removed: plan.removed,
+        prevSegments: plan.extendTo ? { categoryId: target.id, typeSegments: target.typeSegments } : null,
+      };
+    },
+
+    undoConvert: ({ moveIds, removed, prevSegments }) =>
+      set((s) => {
+        const drop = new Set(moveIds);
+        const present = new Set(s.budget.transactions.map((t) => t.id));
+        return {
+          budget: {
+            ...s.budget,
+            categories: prevSegments
+              ? s.budget.categories.map((c) =>
+                  c.id === prevSegments.categoryId ? { ...c, typeSegments: prevSegments.typeSegments } : c,
+                )
+              : s.budget.categories,
+            transactions: [...s.budget.transactions, ...removed.filter((t) => !present.has(t.id))],
+          },
+          wealth: { ...s.wealth, moves: s.wealth.moves.filter((m) => !drop.has(m.id)) },
+        };
+      }),
 
     addRecurring: ({ template, day, startMonth }) => {
       const s0 = get();

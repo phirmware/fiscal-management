@@ -3,7 +3,7 @@ import { computeMonth } from "../engine.js";
 import { categoryRows, findPrefillBudget } from "./derived.js";
 import { makeEffectiveBudget } from "./effectiveBudget.js";
 import { allReallocations } from "./state.js";
-import { useAppStore } from "./store.js";
+import { planConversion, useAppStore } from "./store.js";
 import { accountViews, cashFlowSeries, netWorthAt } from "./wealth.js";
 
 const OCT = "2026-10";
@@ -193,3 +193,113 @@ describe("budget moves", () => {
     expect(useAppStore.getState().wealth.moves).toEqual([]);
   });
 });
+
+describe("converting spending into moves", () => {
+  beforeEach(freshStore);
+
+  /** Daily birthday savings logged as Gifts spending in September and October. */
+  function seedLogged() {
+    const ids = seed();
+    const s = useAppStore.getState();
+    const spends = [
+      s.addTransaction({ categoryId: ids.gifts, date: "2026-09-28", amount: 5, note: "Bday" }),
+      s.addTransaction({ categoryId: ids.gifts, date: "2026-10-02", amount: 5, note: "Bday", accountId: ids.current }),
+      s.addTransaction({ categoryId: ids.gifts, date: "2026-10-03", amount: 7.5, note: "Bday", accountId: ids.current }),
+    ];
+    const other = s.addTransaction({ categoryId: ids.gifts, date: "2026-10-04", amount: 30, note: "Mum's present" });
+    return { ...ids, spends, other };
+  }
+
+  it("keeps each month's Gifts availability, fills the pot and removes the spending", () => {
+    const { gifts, pot, spends, saver } = seedLogged();
+    const sepBefore = view("2026-09").rows.get(gifts)!.available;
+    const octBefore = view(OCT).summary;
+    const cfBefore = cashFlowSeries(view(OCT).eff, OCT, OCT)[0]!;
+
+    const r = useAppStore.getState().convertToMoves({ transactionIds: spends, toCategoryId: pot, toAccountId: saver });
+    expect(r).not.toBeNull();
+
+    expect(view("2026-09").rows.get(gifts)!.available).toBe(sepBefore);
+    const oct = view(OCT);
+    expect(oct.rows.get(gifts)!.available).toBe(100 - 12.5 - 30);
+    expect(oct.summary.unallocated).toBe(octBefore.unallocated);
+    // September's £5 carries into the pot, October adds £12.50.
+    expect(oct.rows.get(pot)!.carryIn).toBe(5);
+    expect(oct.rows.get(pot)!.available).toBe(17.5);
+    // Spending falls by exactly the converted amount; the real present stays.
+    expect(oct.summary.totalSpent).toBe(30);
+    expect(cashFlowSeries(oct.eff, OCT, OCT)[0]!.spending).toBe(roundTo(cfBefore.spending - 12.5));
+    expect(useAppStore.getState().budget.transactions.map((t) => t.note)).toEqual(["Mum's present"]);
+  });
+
+  it("starts the pot earlier when older entries need to land in it", () => {
+    const { pot, spends } = seedLogged();
+    const r = useAppStore.getState().convertToMoves({ transactionIds: spends, toCategoryId: pot })!;
+    const cat = useAppStore.getState().budget.categories.find((c) => c.id === pot)!;
+    expect(cat.typeSegments[0]!.fromMonth).toBe("2026-09");
+    expect(r.prevSegments?.typeSegments[0]!.fromMonth).toBe(OCT);
+    expect(view("2026-09").rows.get(pot)!.available).toBe(5);
+  });
+
+  it("paid-from accounts: a destination makes it a transfer; none puts the money back", () => {
+    const { pot, spends, current, saver } = seedLogged();
+    const state = useAppStore.getState();
+    const plan = planConversion(state, { transactionIds: spends, toCategoryId: pot });
+    expect(typeof plan).not.toBe("string");
+    expect((plan as Exclude<typeof plan, string>).restored.get(current)).toBe(12.5);
+
+    const before = accountViews(state.wealth, "2026-10-31", "2026-10-31", state.budget.transactions);
+    expect(before[0]!.balance).toBe(987.5);
+    state.convertToMoves({ transactionIds: spends, toCategoryId: pot, toAccountId: saver });
+    const s = useAppStore.getState();
+    const after = accountViews(s.wealth, "2026-10-31", "2026-10-31", s.budget.transactions);
+    expect(after[0]!.balance).toBe(987.5);
+    expect(after[1]!.balance).toBe(512.5);
+    const moved = s.wealth.moves.filter((m) => m.fromAccountId);
+    expect(moved).toHaveLength(2);
+    // Same log time as the original spend, so ordering against check-ins is unchanged.
+    const orig = state.budget.transactions.find((t) => t.id === spends[1])!;
+    expect(moved.find((m) => m.date === "2026-10-02")!.loggedAt).toBe(orig.loggedAt);
+  });
+
+  it("needs a budget source for entries already logged in the target", () => {
+    const { gifts, pot } = seed();
+    const s = useAppStore.getState();
+    const t = s.addTransaction({ categoryId: pot, date: "2026-10-05", amount: 10 });
+    expect(planConversion(useAppStore.getState(), { transactionIds: [t], toCategoryId: pot })).toMatch(/choose where their budget comes from/);
+    s.convertToMoves({ transactionIds: [t], toCategoryId: pot, fromCategoryId: gifts });
+    const oct = view(OCT);
+    expect(oct.rows.get(pot)!.available).toBe(10);
+    expect(oct.rows.get(gifts)!.available).toBe(90);
+  });
+
+  it("is all or nothing", () => {
+    const { pot, spends } = seedLogged();
+    const s = useAppStore.getState();
+    const refund = s.addTransaction({ categoryId: pot, date: "2026-10-05", amount: -4 });
+    const before = JSON.stringify(useAppStore.getState().budget);
+    expect(s.convertToMoves({ transactionIds: [...spends, refund], toCategoryId: pot })).toBeNull();
+    expect(s.convertToMoves({ transactionIds: [...spends, "missing"], toCategoryId: pot })).toBeNull();
+    expect(JSON.stringify(useAppStore.getState().budget)).toBe(before);
+    expect(useAppStore.getState().wealth.moves).toEqual([]);
+  });
+
+  it("undo restores the entries, the pot's start month and every balance", () => {
+    const { gifts, pot, spends, saver } = seedLogged();
+    const s0 = useAppStore.getState();
+    const txBefore = [...s0.budget.transactions].sort((a, b) => a.id.localeCompare(b.id));
+    const giftsBefore = view(OCT).rows.get(gifts)!.available;
+    const r = s0.convertToMoves({ transactionIds: spends, toCategoryId: pot, toAccountId: saver })!;
+    useAppStore.getState().undoConvert(r);
+    const s = useAppStore.getState();
+    expect([...s.budget.transactions].sort((a, b) => a.id.localeCompare(b.id))).toEqual(txBefore);
+    expect(s.wealth.moves).toEqual([]);
+    expect(s.budget.categories.find((c) => c.id === pot)!.typeSegments[0]!.fromMonth).toBe(OCT);
+    expect(view(OCT).rows.get(gifts)!.available).toBe(giftsBefore);
+    expect(accountViews(s.wealth, "2026-10-31", "2026-10-31", s.budget.transactions)[1]!.balance).toBe(500);
+  });
+});
+
+function roundTo(v: number): number {
+  return Math.round(v * 100) / 100;
+}

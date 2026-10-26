@@ -7,6 +7,7 @@ import { useAppStore } from "../app/store.js";
 import { formatGBP, roundMoney } from "../app/utils/money.js";
 import { friendlyDayLabel, monthLabel, todayIso } from "../app/utils/month.js";
 import { AnimatedGBP } from "../components/AnimatedNumber.js";
+import { ConvertToMoves } from "../components/ConvertToMoves.js";
 import { EntryModal } from "../components/EntryModal.js";
 import type { EditTarget, Prefill } from "../components/EntryModal.js";
 import { Modal } from "../components/Modal.js";
@@ -50,6 +51,7 @@ export function TransactionsScreen() {
   const [editing, setEditing] = useState<EditTarget>(null);
   const [prefill, setPrefill] = useState<Prefill | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
+  const [convertOpen, setConvertOpen] = useState(false);
   const addTxn = useAppStore((s) => s.addTransaction);
   const addMovement = useAppStore((s) => s.addMovement);
   const skipOccurrence = useAppStore((s) => s.skipOccurrence);
@@ -355,6 +357,20 @@ export function TransactionsScreen() {
         </div>
       )}
 
+      {canAdd && (filterCat !== "all" || typeFilter === "move") && (
+        <div className="-mt-3 px-1">
+          <button
+            type="button"
+            className="text-[12px] font-medium text-accent hover:underline underline-offset-2"
+            onClick={() => setConvertOpen(true)}
+          >
+            {filterCat !== "all"
+              ? `Convert ${categoriesById.get(filterCat)?.name ?? "these"} spending to moves…`
+              : "Convert past spending to moves…"}
+          </button>
+        </div>
+      )}
+
       {!canAdd ? (
         <div className="card p-10 text-center rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
           <p className="text-[14px] text-ink-soft">Create a category first to start logging spend.</p>
@@ -444,6 +460,11 @@ export function TransactionsScreen() {
         defaultCategoryId={lastCategoryId ?? budget.categories[0]?.id ?? null}
         initialKind={budget.categories.length === 0 ? "income" : "spend"}
         prefill={prefill}
+      />
+      <ConvertToMoves
+        open={convertOpen}
+        onClose={() => setConvertOpen(false)}
+        initialCategoryId={filterCat !== "all" ? filterCat : null}
       />
       <ManageRepeating open={manageOpen} onClose={() => setManageOpen(false)} describe={describeRule} />
     </div>
