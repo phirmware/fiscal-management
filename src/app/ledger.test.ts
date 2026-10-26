@@ -34,7 +34,7 @@ const w = (accounts: WealthAccount[], snapshots: BalanceSnapshot[], movements: M
   accounts,
   snapshots,
   movements,
-  recurring: [],
+  moves: [], recurring: [],
   profile: { emergencyMonthsTarget: 6 },
 });
 

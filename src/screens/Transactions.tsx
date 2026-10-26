@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { monthFromDate } from "../engine.js";
-import type { ExpenseMovement, IncomeMovement, RecurringRule, TransferMovement } from "../app/state.js";
+import type { BudgetMove, ExpenseMovement, IncomeMovement, RecurringRule, TransferMovement } from "../app/state.js";
 import { entryFor, occurrencesFor, ordinal } from "../app/recurring.js";
 import type { Occurrence } from "../app/recurring.js";
 import { useAppStore } from "../app/store.js";
@@ -28,13 +28,14 @@ function SearchIcon({ className }: { className?: string }) {
   );
 }
 
-type TypeFilter = "all" | "spend" | "income" | "transfer" | "expense";
+type TypeFilter = "all" | "spend" | "income" | "transfer" | "expense" | "move";
 
 type Entry =
   | { kind: "spend"; id: string; date: string; loggedAt: number; t: Transaction }
   | { kind: "income"; id: string; date: string; loggedAt: number; m: IncomeMovement }
   | { kind: "transfer"; id: string; date: string; loggedAt: number; m: TransferMovement }
-  | { kind: "expense"; id: string; date: string; loggedAt: number; m: ExpenseMovement };
+  | { kind: "expense"; id: string; date: string; loggedAt: number; m: ExpenseMovement }
+  | { kind: "move"; id: string; date: string; loggedAt: number; mv: BudgetMove };
 
 export function TransactionsScreen() {
   const budget = useAppStore((s) => s.budget);
@@ -74,8 +75,11 @@ export function TransactionsScreen() {
       else if (m.type === "expense") out.push({ kind: "expense", id: m.id, date: m.date, loggedAt: m.loggedAt, m });
       else out.push({ kind: "transfer", id: m.id, date: m.date, loggedAt: m.loggedAt, m });
     }
+    for (const mv of wealth.moves) {
+      if (mv.date.slice(0, 7) === month) out.push({ kind: "move", id: mv.id, date: mv.date, loggedAt: mv.loggedAt, mv });
+    }
     return out;
-  }, [budget.transactions, wealth.movements, month]);
+  }, [budget.transactions, wealth.movements, wealth.moves, month]);
 
   const monthSpends = useMemo(
     () => monthEntries.filter((e): e is Extract<Entry, { kind: "spend" }> => e.kind === "spend"),
@@ -86,7 +90,10 @@ export function TransactionsScreen() {
     const q = query.trim().toLowerCase();
     return monthEntries
       .filter((e) => {
-        if (filterCat !== "all") return e.kind === "spend" && e.t.categoryId === filterCat;
+        if (filterCat !== "all")
+          return e.kind === "spend"
+            ? e.t.categoryId === filterCat
+            : e.kind === "move" && (e.mv.fromCategoryId === filterCat || e.mv.toCategoryId === filterCat);
         return typeFilter === "all" || e.kind === typeFilter;
       })
       .filter((e) => {
@@ -98,7 +105,16 @@ export function TransactionsScreen() {
               ? [e.m.note, e.m.source === "salary" ? "salary" : "income", accountName(e.m.accountId)]
               : e.kind === "expense"
                 ? [e.m.note, "off-budget", accountName(e.m.accountId)]
-                : [e.m.note, "transfer", accountName(e.m.fromAccountId), accountName(e.m.toAccountId)];
+                : e.kind === "move"
+                  ? [
+                      e.mv.note,
+                      "move",
+                      categoriesById.get(e.mv.fromCategoryId)?.name,
+                      categoriesById.get(e.mv.toCategoryId)?.name,
+                      accountName(e.mv.fromAccountId),
+                      accountName(e.mv.toAccountId),
+                    ]
+                  : [e.m.note, "transfer", accountName(e.m.fromAccountId), accountName(e.m.toAccountId)];
         return hay.some((h) => (h ?? "").toLowerCase().includes(q));
       })
       .slice()
@@ -114,6 +130,7 @@ export function TransactionsScreen() {
     income: monthEntries.filter((e) => e.kind === "income").length,
     transfer: monthEntries.filter((e) => e.kind === "transfer").length,
     expense: monthEntries.filter((e) => e.kind === "expense").length,
+    move: monthEntries.filter((e) => e.kind === "move").length,
   };
 
   const groupedByDate = useMemo(() => {
@@ -284,14 +301,24 @@ export function TransactionsScreen() {
           aria-label="Filter activity"
         >
           <div className="flex gap-2 pb-1 min-w-min">
-            {hasAccounts && (counts.income > 0 || counts.transfer > 0 || counts.expense > 0 || typeFilter !== "all") ? (
-              (["all", "spend", "income", "transfer", "expense"] as const)
+            {counts.income > 0 || counts.transfer > 0 || counts.expense > 0 || counts.move > 0 || typeFilter !== "all" ? (
+              (["all", "spend", "income", "transfer", "expense", "move"] as const)
                 .filter((t) => t === "all" || t === "spend" || counts[t] > 0 || typeFilter === t)
                 .map((t) => (
                 <FilterChip
                   key={t}
                   label={
-                    t === "all" ? "All" : t === "spend" ? "Spending" : t === "income" ? "Income" : t === "transfer" ? "Transfers" : "Off-budget"
+                    t === "all"
+                      ? "All"
+                      : t === "spend"
+                        ? "Spending"
+                        : t === "income"
+                          ? "Income"
+                          : t === "transfer"
+                            ? "Transfers"
+                            : t === "expense"
+                              ? "Off-budget"
+                              : "Moves"
                   }
                   count={counts[t]}
                   active={filterCat === "all" && typeFilter === t}
@@ -387,7 +414,15 @@ export function TransactionsScreen() {
                         className="w-full text-left px-4 py-3.5 flex items-center gap-3
                           transition hover:bg-surface-sunken/60 active:bg-surface-sunken/80
                           focus-ring"
-                        onClick={() => openEntry(e.kind === "spend" ? { kind: "spend", t: e.t } : { kind: "movement", m: e.m })}
+                        onClick={() =>
+                          openEntry(
+                            e.kind === "spend"
+                              ? { kind: "spend", t: e.t }
+                              : e.kind === "move"
+                                ? { kind: "move", mv: e.mv }
+                                : { kind: "movement", m: e.m },
+                          )
+                        }
                       >
                         <EntryRow entry={e} categoriesById={categoriesById} accountName={accountName} />
                       </button>
@@ -478,6 +513,24 @@ function EntryRow({
       </>
     );
   }
+  if (e.kind === "move") {
+    const mv = e.mv;
+    const name = (id: string) => categoriesById.get(id)?.name ?? "Deleted category";
+    const route = `${name(mv.fromCategoryId)} → ${name(mv.toCategoryId)}`;
+    return (
+      <>
+        <MovementAvatar kind="move" />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold tracking-tight text-ink truncate">{mv.note?.trim() || route}</div>
+          <div className="text-[11px] text-ink-muted truncate mt-0.5">
+            {mv.note?.trim() ? `${route}` : "Budget move"}
+            {mv.fromAccountId && mv.toAccountId && ` · ${accountName(mv.fromAccountId)} → ${accountName(mv.toAccountId)}`}
+          </div>
+        </div>
+        <div className="text-[15px] font-semibold stat-num text-ink-soft whitespace-nowrap">{formatGBP(mv.amount)}</div>
+      </>
+    );
+  }
   const m = e.m;
   return (
     <>
@@ -493,8 +546,9 @@ function EntryRow({
   );
 }
 
-function MovementAvatar({ kind }: { kind: "income" | "transfer" | "expense" }) {
-  const v = kind === "income" ? "--c-status-ok" : kind === "expense" ? "--c-debt" : "--c-accent";
+function MovementAvatar({ kind }: { kind: "income" | "transfer" | "expense" | "move" }) {
+  const v =
+    kind === "income" ? "--c-status-ok" : kind === "expense" ? "--c-debt" : kind === "move" ? "--c-group-savings" : "--c-accent";
   return (
     <div
       className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0"
@@ -510,6 +564,8 @@ function MovementAvatar({ kind }: { kind: "income" | "transfer" | "expense" }) {
           <path d="M10 15V5m-4 4 4-4 4 4" />
         ) : kind === "expense" ? (
           <path d="M10 5v10m-4-4 4 4 4-4" />
+        ) : kind === "move" ? (
+          <path d="M4 10h12m-4-4 4 4-4 4M4 5v10" />
         ) : (
           <path d="M4 7h11l-3-3M16 13H5l3 3" />
         )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { CategoryRow as CategoryRowData, StatusBucket } from "../app/derived.js";
-import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
+import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
 import { useAppStore } from "../app/store.js";
 import { monthLabel } from "../app/utils/month.js";
 
@@ -60,8 +60,12 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
   const groupSpine = GROUP_BG[row.group] ?? "bg-ink-faint";
   const statusVar = STATUS_VAR[row.status];
 
+  // The input edits the planned budget. This month's moves and overspend
+  // fixes sit on top of it, so they aren't baked into the plan on save.
+  const planned = roundMoney(row.budgeted - row.adjustment);
+
   function startEdit() {
-    setDraft(row.budgeted > 0 ? String(row.budgeted) : "");
+    setDraft(planned > 0 ? String(planned) : "");
     setEditing(true);
   }
 
@@ -168,7 +172,7 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
                 }}
                 aria-label={`Budget for ${row.name}`}
               />
-            ) : row.budgeted === 0 ? (
+            ) : row.budgeted === 0 && row.adjustment === 0 ? (
               <button
                 type="button"
                 onClick={startEdit}
@@ -206,6 +210,15 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
                 {formatGBP(Math.abs(row.carryIn))} carried
               </span>
             )}
+            {row.adjustment !== 0 && (
+              <span
+                className="pill bg-surface-sunken text-ink-soft stat-num"
+                title={`Planned ${formatGBP(planned)} · moved this month ${row.adjustment > 0 ? "+" : "−"}${formatGBP(Math.abs(row.adjustment))}`}
+              >
+                {row.adjustment > 0 ? "+" : "−"}
+                {formatGBP(Math.abs(row.adjustment))} moved
+              </span>
+            )}
             {isPrefilled && row.budgeted > 0 && (
               <span className="pill bg-accent-soft text-accent">
                 from {monthLabel(row.prefillSourceMonth!)}
@@ -213,6 +226,13 @@ export function CategoryRow({ row, month, onResolveOverspend }: Props) {
             )}
           </div>
         </div>
+
+        {editing && row.adjustment !== 0 && (
+          <p className="mt-2 text-[11px] text-ink-muted">
+            Editing the planned budget. This month's {row.adjustment > 0 ? "+" : "−"}
+            {formatGBP(Math.abs(row.adjustment))} moved stays on top.
+          </p>
+        )}
 
         {isPrefilled && row.budgeted > 0 && !availableNegative && (
           <p className="mt-2 text-[11px] text-ink-muted">

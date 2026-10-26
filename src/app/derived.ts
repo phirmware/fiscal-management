@@ -69,6 +69,11 @@ export interface CategoryRow {
   status: StatusBucket;
   acknowledged: boolean;
   prefillSourceMonth: Month | null;
+  /**
+   * This month's one-off adjustments already inside `budgeted` (overspend
+   * fixes, category moves). `budgeted − adjustment` is the planned budget.
+   */
+  adjustment: number;
 }
 
 export interface PrefillResult {
@@ -263,6 +268,12 @@ export function findPrefillBudget(
   return { amount: best.amount, sourceMonth: best.month };
 }
 
+function adjustmentFor(source: BudgetSource, categoryId: string, month: Month): number {
+  let sum = 0;
+  for (const r of source.reallocations) if (r.categoryId === categoryId && r.month === month) sum += r.delta;
+  return roundMoney(sum);
+}
+
 export function categoryRows(
   state: BudgetState,
   source: BudgetSource,
@@ -305,6 +316,7 @@ export function categoryRows(
       status,
       acknowledged: isAcked(acks, r.categoryId, month),
       prefillSourceMonth: prefill?.sourceMonth ?? null,
+      adjustment: prefill ? 0 : adjustmentFor(source, r.categoryId, month),
     });
   }
   return rows;

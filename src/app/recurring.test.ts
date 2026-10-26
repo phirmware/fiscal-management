@@ -31,6 +31,7 @@ const state = (recurring: RecurringRule[], movements: Movement[] = []): WealthSt
     { id: "c", accountId: "saver", date: "2026-10-01", balance: 8000 },
   ],
   movements,
+  moves: [],
   recurring,
   profile: { emergencyMonthsTarget: 6 },
 });

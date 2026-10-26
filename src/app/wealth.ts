@@ -146,7 +146,8 @@ export interface Ledger {
 }
 
 /**
- * Turns spending (with a "paid with" account), income and transfers into
+ * Turns spending (with a "paid with" account), income, transfers and
+ * category moves that moved money between accounts into
  * per-account flows. Entries pointing at unknown accounts are ignored rather
  * than guessed at.
  */
@@ -177,6 +178,12 @@ export function buildLedger(wealth: WealthState, transactions: Transaction[] = [
       push(m.fromAccountId, -m.amount, { sourceId: m.id, kind: "transferOut", date: m.date, loggedAt: m.loggedAt });
       push(m.toAccountId, m.amount, { sourceId: m.id, kind: "transferIn", date: m.date, loggedAt: m.loggedAt });
     }
+  }
+  // A category move only touches accounts when the money physically moved too.
+  for (const mv of wealth.moves) {
+    if (!(mv.amount > 0) || !mv.fromAccountId || !mv.toAccountId || mv.fromAccountId === mv.toAccountId) continue;
+    push(mv.fromAccountId, -mv.amount, { sourceId: mv.id, kind: "transferOut", date: mv.date, loggedAt: mv.loggedAt });
+    push(mv.toAccountId, mv.amount, { sourceId: mv.id, kind: "transferIn", date: mv.date, loggedAt: mv.loggedAt });
   }
   for (const list of flows.values()) {
     list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.loggedAt ?? 0) - (b.loggedAt ?? 0)));

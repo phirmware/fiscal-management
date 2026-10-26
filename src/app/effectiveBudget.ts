@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { BudgetState, IncomeEntry, Month, MonthlyBudget } from "../types.js";
-import type { BudgetReallocation, IncomeMovement, Movement } from "./state.js";
+import type { BudgetMove, BudgetReallocation, IncomeMovement, Movement } from "./state.js";
+import { allReallocations } from "./state.js";
 import { useAppStore } from "./store.js";
 import { roundMoney } from "./utils/money.js";
 
@@ -12,7 +13,7 @@ export interface BudgetSource {
 export interface BudgetView {
   /** Untouched user-set budgets — used as the source of truth for prefill. */
   baselineBudgets: MonthlyBudget[];
-  /** One-month adjustments applied on top of baseline. */
+  /** One-month adjustments applied on top of baseline, including category moves. */
   reallocations: BudgetReallocation[];
   /** Convenience source object for derived helpers like findPrefillBudget. */
   source: BudgetSource;
@@ -76,10 +77,11 @@ export function makeEffectiveBudget(
   baseline: BudgetState,
   reallocations: BudgetReallocation[],
   movements: Movement[] = [],
+  moves: BudgetMove[] = [],
 ): BudgetState {
   return {
     ...baseline,
-    budgets: mergeBudgets(baseline.budgets, reallocations),
+    budgets: mergeBudgets(baseline.budgets, allReallocations(reallocations, moves)),
     income: mergeIncome(baseline.income, movements),
   };
 }
@@ -88,13 +90,15 @@ export function useBudgetView(): BudgetView {
   const baseline = useAppStore((s) => s.budget);
   const reallocations = useAppStore((s) => s.reallocations);
   const movements = useAppStore((s) => s.wealth.movements);
+  const moves = useAppStore((s) => s.wealth.moves);
   return useMemo(() => {
-    const effective = makeEffectiveBudget(baseline, reallocations, movements);
+    const all = allReallocations(reallocations, moves);
+    const effective = makeEffectiveBudget(baseline, reallocations, movements, moves);
     return {
       baselineBudgets: baseline.budgets,
-      reallocations,
-      source: { baseline: baseline.budgets, reallocations },
+      reallocations: all,
+      source: { baseline: baseline.budgets, reallocations: all },
       effective,
     };
-  }, [baseline, reallocations, movements]);
+  }, [baseline, reallocations, movements, moves]);
 }

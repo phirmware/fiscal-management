@@ -18,6 +18,7 @@ import type {
   AccountKind,
   AppState,
   BalanceSnapshot,
+  BudgetMove,
   ExpenseMovement,
   FinancialProfile,
   IncomeMovement,
@@ -30,7 +31,8 @@ import type {
   TransferMovement,
   WealthAccount,
 } from "./state.js";
-import { movementAccountIds } from "./state.js";
+import { allReallocations, movementAccountIds } from "./state.js";
+import { findPrefillBudget } from "./derived.js";
 import { roundMoney } from "./utils/money.js";
 import { todayIso } from "./utils/month.js";
 import {
@@ -126,6 +128,10 @@ interface AppStore extends AppState {
   addMovement: (input: MovementInput) => string | null;
   editMovement: (id: string, input: MovementInput) => boolean;
   deleteMovement: (id: string) => void;
+
+  addMove: (input: MoveInput) => string | null;
+  editMove: (id: string, input: MoveInput) => boolean;
+  deleteMove: (id: string) => void;
   addRecurring: (input: { template: RecurringTemplate; day: number; startMonth: Month }) => string | null;
   setRecurringPaused: (id: string, paused: boolean) => void;
   deleteRecurring: (id: string) => void;
@@ -192,6 +198,63 @@ function buildMovement(id: string, m: MovementInput, loggedAt: number): Movement
     loggedAt,
   };
   return out;
+}
+
+export type MoveInput = Omit<BudgetMove, "id" | "loggedAt"> & { loggedAt?: number };
+
+function categoryUsableIn(c: Category | undefined, month: Month): boolean {
+  return !!c && !c.archived && (c.typeSegments[0]?.fromMonth ?? "9999-99") <= month;
+}
+
+/**
+ * Rejects moves the budget can't net to zero: both categories must be active
+ * and exist in the move's month (otherwise the engine counts only one side),
+ * and the accounts are both set or both unset, distinct and known.
+ */
+export function validMove(m: MoveInput, categories: Category[], accountIds: Set<string>): boolean {
+  if (!Number.isFinite(m.amount) || m.amount <= 0) return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(m.date)) return false;
+  if (m.fromCategoryId === m.toCategoryId) return false;
+  const month = m.date.slice(0, 7);
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  if (!categoryUsableIn(byId.get(m.fromCategoryId), month) || !categoryUsableIn(byId.get(m.toCategoryId), month)) return false;
+  if (!m.fromAccountId && !m.toAccountId) return true;
+  return (
+    !!m.fromAccountId &&
+    !!m.toAccountId &&
+    m.fromAccountId !== m.toAccountId &&
+    accountIds.has(m.fromAccountId) &&
+    accountIds.has(m.toAccountId)
+  );
+}
+
+function buildMove(id: string, m: MoveInput, loggedAt: number): BudgetMove {
+  return {
+    id,
+    date: m.date,
+    amount: roundMoney(m.amount),
+    fromCategoryId: m.fromCategoryId,
+    toCategoryId: m.toCategoryId,
+    ...(m.fromAccountId && m.toAccountId ? { fromAccountId: m.fromAccountId, toAccountId: m.toAccountId } : {}),
+    ...(m.note?.trim() ? { note: m.note.trim() } : {}),
+    loggedAt,
+  };
+}
+
+/**
+ * A category still showing last month's budget as a suggestion has no record
+ * for this month, so the engine sees £0 there. Before a move adjusts it, save
+ * the suggestion as the month's budget — the figure the user was looking at —
+ * so the move lands on top of it instead of replacing it.
+ */
+function settlePrefills(s: AppState, categoryIds: string[], month: Month): MonthlyBudget[] {
+  const source = { baseline: s.budget.budgets, reallocations: allReallocations(s.reallocations, s.wealth.moves) };
+  let budgets = s.budget.budgets;
+  for (const id of categoryIds) {
+    const prefill = findPrefillBudget(source, id, month);
+    if (prefill) budgets = upsertBudget(budgets, id, month, prefill.amount);
+  }
+  return budgets;
 }
 
 /** Every account a repeating rule would touch. */
@@ -549,6 +612,12 @@ export const useAppStore = create<AppStore>()(
           movements: s.wealth.movements.filter((m) => !movementAccountIds(m).includes(id)),
           // Rules that would log against a missing account are removed too.
           recurring: s.wealth.recurring.filter((r) => !templateAccountIds(r.template).includes(id)),
+          // A category move keeps its budget side; only the account half goes.
+          moves: s.wealth.moves.map((m) => {
+            if (m.fromAccountId !== id && m.toAccountId !== id) return m;
+            const { fromAccountId: _f, toAccountId: _t, ...rest } = m;
+            return rest;
+          }),
         },
         // Spending stays in the budget; it just stops pointing at a missing account.
         budget: s.budget.transactions.some((t) => t.accountId === id)
@@ -609,6 +678,33 @@ export const useAppStore = create<AppStore>()(
       set((s) => ({
         wealth: { ...s.wealth, movements: s.wealth.movements.filter((m) => m.id !== id) },
       })),
+
+    addMove: (input) => {
+      const s0 = get();
+      if (!validMove(input, s0.budget.categories, new Set(s0.wealth.accounts.map((a) => a.id)))) return null;
+      const id = newId();
+      const move = buildMove(id, input, input.loggedAt ?? Date.now());
+      set((s) => ({
+        budget: { ...s.budget, budgets: settlePrefills(s, [move.fromCategoryId, move.toCategoryId], move.date.slice(0, 7)) },
+        wealth: { ...s.wealth, moves: [...s.wealth.moves, move] },
+      }));
+      return id;
+    },
+
+    editMove: (id, input) => {
+      const s0 = get();
+      const existing = s0.wealth.moves.find((m) => m.id === id);
+      if (!existing || !validMove(input, s0.budget.categories, new Set(s0.wealth.accounts.map((a) => a.id)))) return false;
+      const next = buildMove(id, input, existing.loggedAt);
+      set((s) => ({
+        budget: { ...s.budget, budgets: settlePrefills(s, [next.fromCategoryId, next.toCategoryId], next.date.slice(0, 7)) },
+        wealth: { ...s.wealth, moves: s.wealth.moves.map((m) => (m.id === id ? next : m)) },
+      }));
+      return true;
+    },
+
+    deleteMove: (id) =>
+      set((s) => ({ wealth: { ...s.wealth, moves: s.wealth.moves.filter((m) => m.id !== id) } })),
 
     addRecurring: ({ template, day, startMonth }) => {
       const s0 = get();

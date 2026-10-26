@@ -142,6 +142,44 @@ export function movementAccountIds(m: Movement): string[] {
   return m.type === "transfer" ? [m.fromAccountId, m.toAccountId] : [m.accountId];
 }
 
+/**
+ * Budget moved from one category to another on a date — e.g. Gifts → a
+ * December pot. Counts as a one-month adjustment to both categories (the
+ * baseline budgets that drive next month's prefill are untouched) and is
+ * never spending. If the money also physically moved, both accounts are set
+ * and it behaves like a transfer in the ledger.
+ */
+export interface BudgetMove {
+  id: string;
+  date: IsoDate;
+  /** Always positive. */
+  amount: number;
+  fromCategoryId: string;
+  toCategoryId: string;
+  /** Set together or not at all. */
+  fromAccountId?: string;
+  toAccountId?: string;
+  note?: string;
+  loggedAt: number;
+}
+
+/** Each move is −amount on its source and +amount on its target, in the month it's dated. */
+export function moveReallocations(moves: BudgetMove[]): BudgetReallocation[] {
+  const out: BudgetReallocation[] = [];
+  for (const m of moves) {
+    if (!(m.amount > 0) || m.fromCategoryId === m.toCategoryId) continue;
+    const month = m.date.slice(0, 7);
+    out.push({ categoryId: m.fromCategoryId, month, delta: -m.amount });
+    out.push({ categoryId: m.toCategoryId, month, delta: m.amount });
+  }
+  return out;
+}
+
+/** Stored reallocations plus those implied by category moves. */
+export function allReallocations(reallocations: BudgetReallocation[], moves: BudgetMove[]): BudgetReallocation[] {
+  return moves.length === 0 ? reallocations : [...reallocations, ...moveReallocations(moves)];
+}
+
 export type RecurringTemplate =
   | { kind: "spend"; amount: number; categoryId: string; accountId?: string; note?: string }
   | {
@@ -189,12 +227,14 @@ export interface WealthState {
   accounts: WealthAccount[];
   snapshots: BalanceSnapshot[];
   movements: Movement[];
+  /** Kept with the wealth slice so the ledger and backups see them without extra plumbing. */
+  moves: BudgetMove[];
   recurring: RecurringRule[];
   profile: FinancialProfile;
 }
 
 export function emptyWealthState(): WealthState {
-  return { accounts: [], snapshots: [], movements: [], recurring: [], profile: { emergencyMonthsTarget: 6 } };
+  return { accounts: [], snapshots: [], movements: [], moves: [], recurring: [], profile: { emergencyMonthsTarget: 6 } };
 }
 
 export type ThemePreference = "light" | "dark" | "liquid" | "system";

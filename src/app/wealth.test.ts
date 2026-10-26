@@ -22,6 +22,7 @@ function wealth(partial: Partial<WealthState> = {}): WealthState {
     accounts: partial.accounts ?? [],
     snapshots: partial.snapshots ?? [],
     movements: partial.movements ?? [],
+    moves: partial.moves ?? [],
     recurring: partial.recurring ?? [],
     profile: partial.profile ?? { emergencyMonthsTarget: 6 },
   };

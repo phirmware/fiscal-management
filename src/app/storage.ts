@@ -58,6 +58,7 @@ export function normaliseAppState(input: unknown): AppState {
       accounts: src.wealth?.accounts ?? [],
       snapshots: src.wealth?.snapshots ?? [],
       movements: src.wealth?.movements ?? [],
+      moves: src.wealth?.moves ?? [],
       recurring: src.wealth?.recurring ?? [],
       profile: { ...emptyWealthState().profile, ...(src.wealth?.profile ?? {}) },
     },
