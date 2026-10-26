@@ -10,6 +10,7 @@ import {
   KIND_META,
   LIABILITY_KINDS,
   accountViews,
+  carriesBalance,
   firstSnapshotDate,
   healthReport,
   monthEnd,
@@ -53,10 +54,12 @@ export function WealthScreen() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
 
-  const asOf = monthEnd(month);
-  const views = useMemo(() => accountViews(wealth, asOf, today), [wealth, asOf, today]);
-  // The detail sheet always shows the full, latest history — not the month-clipped view.
-  const latestViews = useMemo(() => accountViews(wealth, "9999-12-31", today), [wealth, today]);
+  // The current month is "as of today" — future-dated entries don't count yet.
+  const asOf = monthEnd(month) < today ? monthEnd(month) : today;
+  const txns = effective.transactions;
+  const views = useMemo(() => accountViews(wealth, asOf, today, txns), [wealth, asOf, today, txns]);
+  // The detail sheet always shows the latest position — not the month-clipped view.
+  const latestViews = useMemo(() => accountViews(wealth, today, today, txns), [wealth, today, txns]);
   const report = useMemo(
     () => healthReport({ wealth, budget: effective, month, today }),
     [wealth, effective, month, today],
@@ -69,10 +72,13 @@ export function WealthScreen() {
     // "All" still shows at least six months so a new tracker isn't one lonely bar.
     return start < addMonths(month, -5) ? start : addMonths(month, -5);
   }, [range, month, first]);
-  const series = useMemo(() => netWorthSeries(wealth, rangeFrom, month), [wealth, rangeFrom, month]);
+  const series = useMemo(
+    () => netWorthSeries(wealth, rangeFrom, month, txns, today),
+    [wealth, rangeFrom, month, txns, today],
+  );
   const spark = useMemo(
-    () => netWorthSeries(wealth, addMonths(month, -11), month).filter((p) => p.hasData),
-    [wealth, month],
+    () => netWorthSeries(wealth, addMonths(month, -11), month, txns, today).filter((p) => p.hasData),
+    [wealth, month, txns, today],
   );
 
   const now = report.current;
@@ -82,7 +88,7 @@ export function WealthScreen() {
 
   const hasAccounts = wealth.accounts.length > 0;
   const detailView = latestViews.find((v) => v.account.id === detailId) ?? null;
-  const isPast = asOf < today;
+  const isPast = monthEnd(month) < today;
 
   if (!hasAccounts) {
     return (
@@ -428,6 +434,8 @@ function AccountGroups({ views, onOpen }: { views: AccountView[]; onOpen: (id: s
                       <p className="truncate text-[11px] text-ink-muted">
                         {KIND_META[v.account.kind].label}
                         {v.account.emergencyFund && " · Emergency fund"}
+                        {v.account.paysInFull && " · Paid in full"}
+                        {v.estimated && <span className="text-accent font-medium"> · Estimated</span>}
                         {v.account.archived && " · Archived"}
                         {v.lastUpdated && (
                           <span className={v.daysSinceUpdate !== null && v.daysSinceUpdate > 35 ? "text-status-warn" : ""}>
@@ -441,7 +449,16 @@ function AccountGroups({ views, onOpen }: { views: AccountView[]; onOpen: (id: s
                       <p className={`text-[14px] font-semibold stat-num ${isDebt ? "text-debt" : "text-ink"}`}>
                         {v.balance === null ? "—" : (isDebt && v.balance > 0 ? "−" : "") + formatGBP(Math.abs(v.balance))}
                       </p>
-                      {v.change !== null && v.change !== 0 && (
+                      {v.estimated && v.checkInBalance !== null && v.balance !== null ? (
+                        <p
+                          className={`text-[11px] stat-num ${
+                            (isDebt ? -1 : 1) * (v.balance - v.checkInBalance) >= 0 ? "text-status-ok" : "text-status-over"
+                          }`}
+                        >
+                          {v.balance - v.checkInBalance > 0 ? "+" : "−"}
+                          {formatGBPShort(Math.abs(v.balance - v.checkInBalance))} since check-in
+                        </p>
+                      ) : v.change !== null && v.change !== 0 && (
                         <p
                           className={`text-[11px] stat-num ${
                             (isDebt ? -v.change : v.change) > 0 ? "text-status-ok" : "text-status-over"
@@ -478,7 +495,7 @@ function AccountGroups({ views, onOpen }: { views: AccountView[]; onOpen: (id: s
 /** Avalanche order (highest APR first) with a projected debt-free date for each. */
 function DebtPlan({ views }: { views: AccountView[] }) {
   const debts = views
-    .filter((v) => !v.account.archived && KIND_META[v.account.kind].liability && (v.balance ?? 0) > 0)
+    .filter((v) => !v.account.archived && carriesBalance(v.account) && (v.balance ?? 0) > 0)
     .sort((a, b) => (b.account.rate ?? 0) - (a.account.rate ?? 0));
   if (debts.length === 0) return null;
   const startMonth = todayIso().slice(0, 7);

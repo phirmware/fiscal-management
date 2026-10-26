@@ -18,7 +18,13 @@ function acc(id: string, kind: WealthAccount["kind"], extra: Partial<WealthAccou
 }
 
 function wealth(partial: Partial<WealthState> = {}): WealthState {
-  return { accounts: [], snapshots: [], profile: { emergencyMonthsTarget: 6 }, ...partial };
+  return {
+    accounts: partial.accounts ?? [],
+    snapshots: partial.snapshots ?? [],
+    movements: partial.movements ?? [],
+    recurring: partial.recurring ?? [],
+    profile: partial.profile ?? { emergencyMonthsTarget: 6 },
+  };
 }
 
 function budgetWith(months: { month: string; income: number; needs: number; wants: number }[]): BudgetState {
@@ -212,5 +218,30 @@ describe("healthReport", () => {
     ]);
     const r = healthReport({ wealth: wealth(), budget: good, month: "2026-10", today: "2026-10-20" });
     expect(r.flags.some((f) => f.id === "savings-rate-win")).toBe(true);
+  });
+
+  it("treats a card paid in full as spending, not debt", () => {
+    const healthy = budgetWith([
+      { month: "2026-08", income: 3000, needs: 1500, wants: 500 },
+      { month: "2026-09", income: 3000, needs: 1500, wants: 500 },
+    ]);
+    const w = wealth({
+      accounts: [
+        acc("cur", "current"),
+        acc("cc", "creditCard", { rate: 24.9, creditLimit: 3000, paysInFull: true }),
+      ],
+      snapshots: [
+        { id: "1", accountId: "cur", date: "2026-10-01", balance: 900 },
+        { id: "2", accountId: "cc", date: "2026-10-01", balance: 1200 },
+      ],
+    });
+    const r = healthReport({ wealth: w, budget: healthy, month: "2026-10", today: "2026-10-20" });
+    const ids = r.flags.map((f) => f.id);
+    expect(ids).not.toContain("high-interest-debt");
+    expect(ids).not.toContain("consumer-debt-heavy");
+    expect(r.metrics.find((m) => m.id === "dti")!.value).toBe("0%");
+    // Still owed today, and still reported to credit agencies.
+    expect(r.current.liabilities).toBe(1200);
+    expect(r.metrics.find((m) => m.id === "utilisation")!.value).toBe("40%");
   });
 });

@@ -2,12 +2,18 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../app/store.js";
 import type { AccountView } from "../app/wealth.js";
 import { ASSET_CLASS_META, KIND_META, projectPayoff } from "../app/wealth.js";
-import { formatGBP, parseMoneyInput } from "../app/utils/money.js";
+import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
 import { addMonths, friendlyDayLabel, isValidIsoDate, monthLabel, todayIso } from "../app/utils/month.js";
 import { MoneyField } from "./AccountForm.js";
 import { Modal } from "./Modal.js";
 import { Sparkline } from "./Sparkline.js";
 import { showToast } from "./Toast.js";
+
+/** "today" / "yesterday" / "on Saturday" / "on Fri 28 August" — reads naturally mid-sentence. */
+function whenLabel(iso: string): string {
+  const label = friendlyDayLabel(iso);
+  return label === "Today" || label === "Yesterday" ? label.toLowerCase() : `on ${label}`;
+}
 
 function signed(n: number): string {
   return (n > 0 ? "+" : n < 0 ? "−" : "") + formatGBP(Math.abs(n));
@@ -72,7 +78,7 @@ export function AccountDetail({
   }
 
   const payoff =
-    meta.liability && (view.balance ?? 0) > 0 && (account.monthlyPayment ?? 0) > 0
+    meta.liability && !account.paysInFull && (view.balance ?? 0) > 0 && (account.monthlyPayment ?? 0) > 0
       ? projectPayoff(view.balance ?? 0, account.rate ?? 0, account.monthlyPayment ?? 0)
       : null;
   const utilisation =
@@ -93,12 +99,21 @@ export function AccountDetail({
           <p className={`mt-2 text-display-md stat-num ${meta.liability ? "text-debt" : "text-ink"}`}>
             {view.balance === null ? "—" : (meta.liability && view.balance > 0 ? "−" : "") + formatGBP(Math.abs(view.balance))}
           </p>
-          <p className="mt-1 text-[12px] text-ink-muted">
-            {view.lastUpdated ? `Updated ${friendlyDayLabel(view.lastUpdated).toLowerCase()}` : "No balance yet"}
-            {view.change !== null && view.change !== 0 && (
-              <span className="stat-num"> · {signed(view.change)} since previous</span>
-            )}
-          </p>
+          {view.estimated && view.checkInBalance !== null && view.lastUpdated ? (
+            <p className="mt-1 text-[12px] text-ink-muted leading-snug stat-num">
+              <span className="font-semibold text-accent">Estimated</span> · checked in at{" "}
+              {formatGBP(view.checkInBalance)} {whenLabel(view.lastUpdated)}, then{" "}
+              {view.pending.length} logged {view.pending.length === 1 ? "entry" : "entries"} (
+              {signed(meta.liability ? -(view.balance! - view.checkInBalance) : view.balance! - view.checkInBalance)})
+            </p>
+          ) : (
+            <p className="mt-1 text-[12px] text-ink-muted">
+              {view.lastUpdated ? `Checked in ${whenLabel(view.lastUpdated)}` : "No balance yet"}
+              {view.change !== null && view.change !== 0 && (
+                <span className="stat-num"> · {signed(view.change)} since previous</span>
+              )}
+            </p>
+          )}
           {view.history.length > 1 && (
             <Sparkline
               values={view.history.map((h) => (meta.liability ? -h.balance : h.balance))}
@@ -107,6 +122,12 @@ export function AccountDetail({
           )}
         </div>
 
+        {account.paysInFull && (
+          <p className="-mt-2 flex items-center gap-2 text-[12px] font-medium text-ink-soft">
+            <span className="size-1.5 rounded-full bg-status-ok shrink-0" aria-hidden="true" />
+            Paid in full monthly — no interest, not counted as debt in your health check
+          </p>
+        )}
         {(tracksGrowth && view.growth !== null) || payoff || utilisation !== null || account.rate ? (
           <dl className="grid grid-cols-2 gap-3">
             {tracksGrowth && view.growth !== null && (
@@ -154,6 +175,7 @@ export function AccountDetail({
               value={balance}
               onChange={setBalance}
               placeholder={view.balance !== null ? String(view.balance) : "0"}
+              hint={view.estimated ? "Enter what your bank or app shows right now." : undefined}
             />
             <div>
               <label htmlFor="detail-date" className="block text-[13px] font-medium text-ink-soft mb-1.5">
@@ -170,6 +192,13 @@ export function AccountDetail({
               />
             </div>
           </div>
+          {view.estimated && parseMoneyInput(balance) !== null && (
+            <GapNote
+              expected={view.balance ?? 0}
+              actual={meta.liability ? Math.abs(parseMoneyInput(balance)!) : parseMoneyInput(balance)!}
+              liability={meta.liability}
+            />
+          )}
           {tracksGrowth && (
             <MoneyField
               id="detail-contribution"
@@ -202,8 +231,20 @@ export function AccountDetail({
                     </div>
                     <div className="text-right">
                       <p className="text-[13px] font-semibold text-ink stat-num">{formatGBP(h.balance)}</p>
-                      {delta !== null && delta !== 0 && (
-                        <p className="text-[11px] text-ink-muted stat-num">{signed(delta)}</p>
+                      {view.reconciliation[h.id] ? (
+                        <p
+                          className={`text-[11px] stat-num ${
+                            view.reconciliation[h.id]!.gap === 0 ? "text-status-ok" : "text-status-warn"
+                          }`}
+                          title={`Expected ${formatGBP(view.reconciliation[h.id]!.expected)} from ${view.reconciliation[h.id]!.entries} logged entries`}
+                        >
+                          {view.reconciliation[h.id]!.gap === 0
+                            ? "Matched entries"
+                            : `${formatGBP(Math.abs(view.reconciliation[h.id]!.gap))} not logged`}
+                        </p>
+                      ) : (
+                        delta !== null &&
+                        delta !== 0 && <p className="text-[11px] text-ink-muted stat-num">{signed(delta)}</p>
                       )}
                     </div>
                     <button
@@ -260,6 +301,29 @@ export function AccountDetail({
         </p>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * What the check-in you're typing says about your logging. Positive gaps on
+ * savings/investments are often interest or growth rather than a mistake.
+ */
+export function GapNote({ expected, actual, liability }: { expected: number; actual: number; liability: boolean }) {
+  const gap = roundMoney(actual - expected);
+  if (gap === 0) {
+    return <p className="text-[12px] font-medium text-status-ok">Matches your logged entries exactly.</p>;
+  }
+  // For a debt, owing more than expected is the "money went missing" direction.
+  const richer = liability ? gap < 0 : gap > 0;
+  return (
+    <p className="text-[12px] text-ink-soft leading-snug stat-num">
+      Expected {formatGBP(expected)} ·{" "}
+      <span className={`font-semibold ${richer ? "text-status-ok" : "text-status-warn"}`}>
+        {formatGBP(Math.abs(gap))} {richer ? "better" : "worse"} than your entries
+      </span>
+      {richer ? " — interest, a refund, or income you didn't log." : " — spending, fees or a transfer you didn't log."}{" "}
+      Saving this balance accepts it.
+    </p>
   );
 }
 

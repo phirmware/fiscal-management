@@ -418,6 +418,31 @@ function ProfileSection() {
         Used for the retirement benchmark and debt-to-income. Without a salary, net income from your budget is used.
       </p>
 
+      <p className="mt-5 text-[13px] font-medium text-ink-soft">Salary counts toward</p>
+      <div className="mt-2 seg grid-cols-2" role="radiogroup" aria-label="Salary counts toward">
+        {(
+          [
+            ["same", "The month it arrives"],
+            ["next", "The following month"],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={(profile.salaryMonth ?? "same") === v}
+            onClick={() => setProfile({ salaryMonth: v })}
+            className="seg-btn !text-[12px]"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px] text-ink-muted mt-2 leading-snug">
+        Paid near the end of the month for the next one? Choose "following month". This is the default when logging
+        salary — you can change it per entry, and past entries keep the month they were logged against.
+      </p>
+
       <p className="mt-5 text-[13px] font-medium text-ink-soft">Emergency fund target</p>
       <div className="mt-2 seg grid-cols-4" role="radiogroup" aria-label="Emergency fund target">
         {[3, 6, 9, 12].map((m) => (

@@ -12,7 +12,8 @@ import {
 } from "../app/derived.js";
 import type { CategoryRow } from "../app/derived.js";
 import { useAppStore } from "../app/store.js";
-import { useBudgetView } from "../app/effectiveBudget.js";
+import { linkedIncome, useBudgetView } from "../app/effectiveBudget.js";
+import { friendlyDayLabel, monthLabel } from "../app/utils/month.js";
 import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
 import { AnimatedGBP } from "../components/AnimatedNumber.js";
 import { IncomeBreakdown } from "../components/IncomeBreakdown.js";
@@ -163,6 +164,10 @@ export function HomeScreen() {
   const acks = useAppStore((s) => s.overspendAcks);
   const month = useAppStore((s) => s.ui.selectedMonth);
   const setIncome = useAppStore((s) => s.setIncome);
+  const setSelectedScreen = useAppStore((s) => s.setSelectedScreen);
+  const movements = useAppStore((s) => s.wealth.movements);
+  const manualIncome = useAppStore((s) => s.budget.income.find((i) => i.month === month)?.netAmount ?? null);
+  const linked = useMemo(() => linkedIncome(movements).get(month) ?? [], [movements, month]);
 
   const monthSummary = useMemo(() => computeMonth(effective, month), [effective, month]);
   const rows = useMemo(
@@ -314,6 +319,55 @@ export function HomeScreen() {
         )}
       </section>
 
+      {linked.length > 0 ? (
+        <Modal
+          open={incomeOpen}
+          onClose={() => setIncomeOpen(false)}
+          title="Income for this month"
+          footer={
+            <>
+              <button type="button" className="btn-ghost" onClick={() => setIncomeOpen(false)}>
+                Close
+              </button>
+              <button
+                type="button"
+                className="btn-accent"
+                onClick={() => {
+                  setIncomeOpen(false);
+                  setSelectedScreen("transactions");
+                }}
+              >
+                Open Activity
+              </button>
+            </>
+          }
+        >
+          <p className="text-[13px] text-ink-soft leading-snug">
+            {monthLabel(month)}'s income comes from what you've logged:
+          </p>
+          <ul role="list" className="mt-3 divide-y divide-surface-border/70 rounded-2xl border border-surface-border">
+            {linked.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[14px] font-semibold text-ink">
+                    {m.note?.trim() || (m.source === "salary" ? "Salary" : "Income")}
+                  </p>
+                  <p className="text-[11px] text-ink-muted">{friendlyDayLabel(m.date)}</p>
+                </div>
+                <p className="text-[14px] font-semibold text-status-ok stat-num">+{formatGBP(m.amount)}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 flex items-baseline justify-between text-[13px] font-semibold text-ink stat-num">
+            <span>Total</span>
+            <span>{formatGBP(monthSummary.income)}</span>
+          </p>
+          <p className="text-[12px] text-ink-muted mt-3 leading-snug">
+            To change it, edit or add income in Activity.
+            {manualIncome !== null && ` Your manually set ${formatGBP(manualIncome)} is kept and returns if these entries are removed.`}
+          </p>
+        </Modal>
+      ) : (
       <Modal
         open={incomeOpen}
         onClose={() => setIncomeOpen(false)}
@@ -354,9 +408,11 @@ export function HomeScreen() {
           />
         </div>
         <p className="text-[12px] text-ink-muted mt-2 leading-snug">
-          Applies only to this month. Set per-month so a raise or side-hustle flows through.
+          Applies only to this month. Set per-month so a raise or side-hustle flows through. Or log your salary in
+          Activity and it fills this in automatically.
         </p>
       </Modal>
+      )}
     </div>
   );
 }

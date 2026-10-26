@@ -19,8 +19,8 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
   const { active, handlers } = useScrub(points.length, WIDTH, layout.indexAt);
   if (points.length === 0) return null;
 
-  const maxUp = Math.max(0, ...points.map((p) => Math.max(p.income, p.net)));
-  const maxDown = Math.min(0, ...points.map((p) => Math.min(-p.spending, p.net)));
+  const maxUp = Math.max(0, ...points.map((p) => Math.max(p.totalIn, p.net)));
+  const maxDown = Math.min(0, ...points.map((p) => Math.min(-p.totalOut, p.net)));
   const ticks = niceTicks(maxDown, maxUp, 4);
   const lo = ticks[0]!;
   const hi = ticks[ticks.length - 1]!;
@@ -57,11 +57,21 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
         <dl className="grid grid-cols-2 gap-x-4 text-right">
           <dt className="text-[11px] text-ink-muted">In</dt>
           <dt className="text-[11px] text-ink-muted">Out</dt>
-          <dd className="text-[13px] font-semibold text-status-ok stat-num">{formatGBPShort(sel.income)}</dd>
+          <dd className="text-[13px] font-semibold text-status-ok stat-num">{formatGBPShort(sel.totalIn)}</dd>
           <dd className="text-[13px] font-semibold text-ink stat-num">
-            {sel.spending > 0 ? "−" : ""}
-            {formatGBPShort(sel.spending)}
+            {sel.totalOut > 0 ? "−" : ""}
+            {formatGBPShort(sel.totalOut)}
           </dd>
+          {(sel.otherIncome > 0 || sel.offBudget > 0) && (
+            <>
+              <dd className="text-[10px] text-ink-muted stat-num whitespace-nowrap">
+                {sel.otherIncome > 0 ? `${formatGBPShort(sel.otherIncome)} other` : ""}
+              </dd>
+              <dd className="text-[10px] text-ink-muted stat-num whitespace-nowrap">
+                {sel.offBudget > 0 ? `${formatGBPShort(sel.offBudget)} off-budget` : ""}
+              </dd>
+            </>
+          )}
         </dl>
       </div>
 
@@ -69,7 +79,7 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="mt-3 w-full h-auto touch-pan-y select-none cursor-crosshair"
         role="img"
-        aria-label={`Cash flow by month. ${monthLabel(sel.month)}: ${formatGBP(sel.income)} in, ${formatGBP(sel.spending)} out`}
+        aria-label={`Cash flow by month. ${monthLabel(sel.month)}: ${formatGBP(sel.totalIn)} in, ${formatGBP(sel.totalOut)} out`}
         {...handlers}
       >
         {ticks.map((t) => (
@@ -102,6 +112,7 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
           const x = layout.xFor(i) - barW / 2;
           const needsH = yFor(-p.needs) - zeroY;
           const wantsH = yFor(-p.spending) - yFor(-p.needs);
+          const offH = yFor(-p.totalOut) - yFor(-p.spending);
           return (
             <g key={p.month} opacity={i === active ? 1 : 0.6}>
               {p.income > 0 && (
@@ -112,6 +123,16 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
                   height={Math.max(1, zeroY - yFor(p.income))}
                   rx={2}
                   fill="rgb(var(--c-status-ok) / 0.85)"
+                />
+              )}
+              {p.otherIncome > 0 && (
+                <rect
+                  x={x}
+                  y={yFor(p.totalIn)}
+                  width={barW}
+                  height={Math.max(1, yFor(p.income) - yFor(p.totalIn))}
+                  rx={2}
+                  fill="rgb(var(--c-status-ok) / 0.4)"
                 />
               )}
               {p.needs > 0 && (
@@ -125,6 +146,16 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
                   height={Math.max(1, wantsH)}
                   rx={2}
                   fill="rgb(var(--c-group-wants))"
+                />
+              )}
+              {p.offBudget > 0 && (
+                <rect
+                  x={x}
+                  y={yFor(-p.spending)}
+                  width={barW}
+                  height={Math.max(1, offH)}
+                  rx={2}
+                  fill="rgb(var(--c-debt) / 0.7)"
                 />
               )}
             </g>
@@ -173,6 +204,8 @@ export function CashFlowChart({ points }: { points: CashFlowMonth[] }) {
         <Legend swatch="bg-status-ok/85" label="Income" />
         <Legend swatch="bg-group-needs" label="Needs" />
         <Legend swatch="bg-group-wants" label="Wants" />
+        {points.some((p) => p.otherIncome > 0) && <Legend swatch="bg-status-ok/40" label="Other income" />}
+        {points.some((p) => p.offBudget > 0) && <Legend swatch="bg-debt/70" label="Off-budget" />}
         <li className="flex items-center gap-1.5 text-[11px] text-ink-soft">
           <span className="w-3 border-t-2 border-dotted border-ink" aria-hidden="true" />
           Left over

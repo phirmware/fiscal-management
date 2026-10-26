@@ -20,8 +20,8 @@ export function WealthGlance() {
     [wealth, effective, month, today],
   );
   const spark = useMemo(
-    () => netWorthSeries(wealth, addMonths(month, -11), month).filter((p) => p.hasData),
-    [wealth, month],
+    () => netWorthSeries(wealth, addMonths(month, -11), month, effective.transactions, today).filter((p) => p.hasData),
+    [wealth, month, effective.transactions, today],
   );
 
   if (!report) {

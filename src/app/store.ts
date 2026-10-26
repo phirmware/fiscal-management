@@ -18,12 +18,21 @@ import type {
   AccountKind,
   AppState,
   BalanceSnapshot,
+  ExpenseMovement,
   FinancialProfile,
+  IncomeMovement,
+  Movement,
   OverspendAck,
   ReleaseAck,
+  RecurringRule,
+  RecurringTemplate,
   ThemePreference,
+  TransferMovement,
   WealthAccount,
 } from "./state.js";
+import { movementAccountIds } from "./state.js";
+import { roundMoney } from "./utils/money.js";
+import { todayIso } from "./utils/month.js";
 import {
   exportAppStateJson,
   importAppStateJson,
@@ -62,6 +71,10 @@ interface AppStore extends AppState {
     date: IsoDate;
     amount: number;
     note?: string;
+    accountId?: string;
+    /** Only for undo — restores the original ordering against check-ins. */
+    loggedAt?: number;
+    recurringId?: string;
   }) => string;
   editTransaction: (id: string, patch: Partial<Omit<Transaction, "id">>) => void;
   deleteTransaction: (id: string) => void;
@@ -110,6 +123,13 @@ interface AppStore extends AppState {
     contribution?: number;
   }) => void;
   deleteSnapshot: (id: string) => void;
+  addMovement: (input: MovementInput) => string | null;
+  editMovement: (id: string, input: MovementInput) => boolean;
+  deleteMovement: (id: string) => void;
+  addRecurring: (input: { template: RecurringTemplate; day: number; startMonth: Month }) => string | null;
+  setRecurringPaused: (id: string, paused: boolean) => void;
+  deleteRecurring: (id: string) => void;
+  skipOccurrence: (id: string, month: Month) => void;
   setProfile: (patch: Partial<FinancialProfile>) => void;
 
   completeOnboarding: () => void;
@@ -118,6 +138,75 @@ interface AppStore extends AppState {
   exportJson: () => string;
   importJson: (json: string) => void;
   resetAll: () => void;
+}
+
+type Distribute<T> = T extends Movement ? Omit<T, "id" | "loggedAt"> & { loggedAt?: number } : never;
+export type MovementInput = Distribute<Movement>;
+
+/**
+ * Rejects movements the ledger can't represent: non-positive or non-finite
+ * amounts, a transfer to the same account, or unknown accounts.
+ */
+export function validMovement(m: MovementInput, accountIds: Set<string>): boolean {
+  if (!Number.isFinite(m.amount) || m.amount <= 0) return false;
+  if (m.type !== "transfer") return accountIds.has(m.accountId);
+  return (
+    m.fromAccountId !== m.toAccountId &&
+    accountIds.has(m.fromAccountId) &&
+    accountIds.has(m.toAccountId)
+  );
+}
+
+function buildMovement(id: string, m: MovementInput, loggedAt: number): Movement {
+  const amount = roundMoney(m.amount);
+  const note = m.note?.trim() ? { note: m.note.trim() } : {};
+  const rec = m.recurringId ? { recurringId: m.recurringId } : {};
+  if (m.type === "expense") {
+    const out: ExpenseMovement = { id, type: "expense", date: m.date, amount, accountId: m.accountId, ...note, ...rec, loggedAt };
+    return out;
+  }
+  if (m.type === "income") {
+    const out: IncomeMovement = {
+      id,
+      type: "income",
+      date: m.date,
+      amount,
+      accountId: m.accountId,
+      source: m.source,
+      ...(m.budgetMonth ? { budgetMonth: m.budgetMonth } : {}),
+      ...note,
+      ...rec,
+      loggedAt,
+    };
+    return out;
+  }
+  const out: TransferMovement = {
+    id,
+    type: "transfer",
+    date: m.date,
+    amount,
+    fromAccountId: m.fromAccountId,
+    toAccountId: m.toAccountId,
+    ...note,
+    ...rec,
+    loggedAt,
+  };
+  return out;
+}
+
+/** Every account a repeating rule would touch. */
+export function templateAccountIds(t: RecurringTemplate): string[] {
+  if (t.kind === "transfer") return [t.fromAccountId, t.toAccountId];
+  if (t.kind === "spend") return t.accountId ? [t.accountId] : [];
+  return [t.accountId];
+}
+
+export function validTemplate(t: RecurringTemplate, accountIds: Set<string>, categoryIds: Set<string>): boolean {
+  const fullBalance = t.kind === "transfer" && t.payFullBalance;
+  if (!Number.isFinite(t.amount) || (!fullBalance && t.amount <= 0) || t.amount < 0) return false;
+  if (t.kind === "spend" && !categoryIds.has(t.categoryId)) return false;
+  if (t.kind === "transfer" && t.fromAccountId === t.toAccountId) return false;
+  return templateAccountIds(t).every((id) => accountIds.has(id));
 }
 
 function newId(): string {
@@ -190,6 +279,9 @@ function upsertSnapshot(
     date: input.date,
     balance: input.balance,
     ...(input.contribution ? { contribution: input.contribution } : {}),
+    // Today's balance is "as of now"; a backdated one is that day's closing balance,
+    // so leaving recordedAt unset makes every same-day entry count as included.
+    ...(input.date === todayIso() ? { recordedAt: Date.now() } : {}),
   };
   if (idx === -1) return [...snapshots, snap];
   const next = snapshots.slice();
@@ -285,7 +377,7 @@ export const useAppStore = create<AppStore>()(
         ),
       })),
 
-    addTransaction: ({ categoryId, date, amount, note }) => {
+    addTransaction: ({ categoryId, date, amount, note, accountId, loggedAt, recurringId }) => {
       const id = newId();
       const txn: Transaction = {
         id,
@@ -293,10 +385,17 @@ export const useAppStore = create<AppStore>()(
         date,
         amount,
         ...(note ? { note } : {}),
+        ...(accountId ? { accountId } : {}),
+        ...(recurringId ? { recurringId } : {}),
+        loggedAt: loggedAt ?? Date.now(),
       };
       set((s) => ({
         budget: { ...s.budget, transactions: [...s.budget.transactions, txn] },
-        ui: { ...s.ui, lastUsedCategoryId: categoryId },
+        ui: {
+          ...s.ui,
+          lastUsedCategoryId: categoryId,
+          ...(accountId ? { lastUsedAccountId: accountId } : {}),
+        },
       }));
       return id;
     },
@@ -305,9 +404,13 @@ export const useAppStore = create<AppStore>()(
       set((s) => ({
         budget: {
           ...s.budget,
-          transactions: s.budget.transactions.map((t) =>
-            t.id === id ? { ...t, ...patch } : t,
-          ),
+          transactions: s.budget.transactions.map((t) => {
+            if (t.id !== id) return t;
+            const next = { ...t, ...patch };
+            // Clearing "paid with" must remove the key, not leave `undefined` behind.
+            if (!next.accountId) delete next.accountId;
+            return next;
+          }),
         },
       })),
 
@@ -442,7 +545,23 @@ export const useAppStore = create<AppStore>()(
           ...s.wealth,
           accounts: s.wealth.accounts.filter((a) => a.id !== id),
           snapshots: s.wealth.snapshots.filter((x) => x.accountId !== id),
+          // Movements can't exist half-attached: drop any that touch the account.
+          movements: s.wealth.movements.filter((m) => !movementAccountIds(m).includes(id)),
+          // Rules that would log against a missing account are removed too.
+          recurring: s.wealth.recurring.filter((r) => !templateAccountIds(r.template).includes(id)),
         },
+        // Spending stays in the budget; it just stops pointing at a missing account.
+        budget: s.budget.transactions.some((t) => t.accountId === id)
+          ? {
+              ...s.budget,
+              transactions: s.budget.transactions.map((t) => {
+                if (t.accountId !== id) return t;
+                const { accountId: _drop, ...rest } = t;
+                return rest;
+              }),
+            }
+          : s.budget,
+        ui: s.ui.lastUsedAccountId === id ? { ...s.ui, lastUsedAccountId: null } : s.ui,
       })),
 
     recordBalance: (input) =>
@@ -453,6 +572,75 @@ export const useAppStore = create<AppStore>()(
     deleteSnapshot: (id) =>
       set((s) => ({
         wealth: { ...s.wealth, snapshots: s.wealth.snapshots.filter((x) => x.id !== id) },
+      })),
+
+    addMovement: (input) => {
+      const ids = new Set(get().wealth.accounts.map((a) => a.id));
+      if (!validMovement(input, ids)) return null;
+      const id = newId();
+      const m = buildMovement(id, input, input.loggedAt ?? Date.now());
+      set((s) => ({
+        wealth: { ...s.wealth, movements: [...s.wealth.movements, m] },
+        ui: {
+          ...s.ui,
+          lastUsedAccountId: m.type === "transfer" ? m.fromAccountId : m.accountId,
+        },
+      }));
+      return id;
+    },
+
+    editMovement: (id, input) => {
+      const s0 = get();
+      const existing = s0.wealth.movements.find((m) => m.id === id);
+      const ids = new Set(s0.wealth.accounts.map((a) => a.id));
+      if (!existing || !validMovement(input, ids)) return false;
+      // Keep the original log time: editing a typo shouldn't reorder it against check-ins.
+      const next = buildMovement(id, input, existing.loggedAt);
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          movements: s.wealth.movements.map((m) => (m.id === id ? next : m)),
+        },
+      }));
+      return true;
+    },
+
+    deleteMovement: (id) =>
+      set((s) => ({
+        wealth: { ...s.wealth, movements: s.wealth.movements.filter((m) => m.id !== id) },
+      })),
+
+    addRecurring: ({ template, day, startMonth }) => {
+      const s0 = get();
+      const accountIds = new Set(s0.wealth.accounts.map((a) => a.id));
+      const categoryIds = new Set(s0.budget.categories.map((c) => c.id));
+      if (!validTemplate(template, accountIds, categoryIds)) return null;
+      if (!Number.isInteger(day) || day < 1 || day > 31) return null;
+      const id = newId();
+      const rule: RecurringRule = { id, template: { ...template, amount: roundMoney(template.amount) }, day, startMonth, skipped: [] };
+      set((s) => ({ wealth: { ...s.wealth, recurring: [...s.wealth.recurring, rule] } }));
+      return id;
+    },
+
+    setRecurringPaused: (id, paused) =>
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          recurring: s.wealth.recurring.map((r) => (r.id === id ? { ...r, paused } : r)),
+        },
+      })),
+
+    deleteRecurring: (id) =>
+      set((s) => ({ wealth: { ...s.wealth, recurring: s.wealth.recurring.filter((r) => r.id !== id) } })),
+
+    skipOccurrence: (id, month) =>
+      set((s) => ({
+        wealth: {
+          ...s.wealth,
+          recurring: s.wealth.recurring.map((r) =>
+            r.id === id && !r.skipped.includes(month) ? { ...r, skipped: [...r.skipped, month] } : r,
+          ),
+        },
       })),
 
     setProfile: (patch) =>

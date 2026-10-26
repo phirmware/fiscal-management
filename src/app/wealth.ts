@@ -1,9 +1,10 @@
 import { computeMonth, createMonthCache } from "../engine.js";
-import type { BudgetState, Category, IsoDate, Month } from "../types.js";
+import type { BudgetState, Category, IsoDate, Month, Transaction } from "../types.js";
 import { savingsThisMonth } from "./derived.js";
 import type {
   AccountKind,
   BalanceSnapshot,
+  Movement,
   FinancialProfile,
   WealthAccount,
   WealthState,
@@ -71,6 +72,11 @@ export function isLiability(account: Pick<WealthAccount, "kind">): boolean {
   return KIND_META[account.kind].liability;
 }
 
+/** Debt that's carried month to month — excludes cards cleared in full each month. */
+export function carriesBalance(account: Pick<WealthAccount, "kind" | "paysInFull">): boolean {
+  return KIND_META[account.kind].liability && !(account.kind === "creditCard" && account.paysInFull);
+}
+
 // ─── Dates ──────────────────────────────────────────────────────────────────
 
 /** Last calendar day of `month` as YYYY-MM-DD. */
@@ -87,7 +93,12 @@ export function daysBetween(fromIso: IsoDate, toIso: IsoDate): number {
   return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
-// ─── Balances & net worth ───────────────────────────────────────────────────
+// ─── Ledger: check-ins + logged movements ───────────────────────────────────
+//
+// Balances the user enters ("check-ins") are the source of truth. Between
+// check-ins, logged entries — spending paid with an account, income into it,
+// transfers in or out — move an *estimated* balance. A new check-in resets the
+// estimate, so a forgotten entry can never compound into later months.
 
 /** Snapshots per account, oldest first. Built once per render pass. */
 export function indexSnapshots(snapshots: BalanceSnapshot[]): Map<string, BalanceSnapshot[]> {
@@ -112,6 +123,97 @@ export function snapshotAt(history: BalanceSnapshot[] | undefined, date: IsoDate
   return found;
 }
 
+export type FlowKind = "spend" | "income" | "expense" | "transferIn" | "transferOut";
+
+/** One logged entry's effect on one account. */
+export interface Flow {
+  /** Id of the source transaction or movement. */
+  sourceId: string;
+  kind: FlowKind;
+  date: IsoDate;
+  loggedAt?: number;
+  /**
+   * Change to the account's *stored* balance. Assets store money held, so
+   * spending is negative; liabilities store money owed, so spending on a
+   * card is positive and a repayment is negative.
+   */
+  delta: number;
+}
+
+export interface Ledger {
+  snapshots: Map<string, BalanceSnapshot[]>;
+  flows: Map<string, Flow[]>;
+}
+
+/**
+ * Turns spending (with a "paid with" account), income and transfers into
+ * per-account flows. Entries pointing at unknown accounts are ignored rather
+ * than guessed at.
+ */
+export function buildLedger(wealth: WealthState, transactions: Transaction[] = []): Ledger {
+  const liability = new Map<string, boolean>();
+  for (const a of wealth.accounts) liability.set(a.id, KIND_META[a.kind].liability);
+  const flows = new Map<string, Flow[]>();
+  // `value` is the change in what the account is worth to you (+ = richer).
+  const push = (accountId: string, value: number, f: Omit<Flow, "delta">) => {
+    const isLiab = liability.get(accountId);
+    if (isLiab === undefined || value === 0) return;
+    const flow: Flow = { ...f, delta: isLiab ? -value : value };
+    const list = flows.get(accountId);
+    if (list) list.push(flow);
+    else flows.set(accountId, [flow]);
+  };
+  for (const t of transactions) {
+    if (!t.accountId) continue;
+    push(t.accountId, -t.amount, { sourceId: t.id, kind: "spend", date: t.date, loggedAt: t.loggedAt });
+  }
+  for (const m of wealth.movements) {
+    if (!(m.amount > 0)) continue;
+    if (m.type === "income") {
+      push(m.accountId, m.amount, { sourceId: m.id, kind: "income", date: m.date, loggedAt: m.loggedAt });
+    } else if (m.type === "expense") {
+      push(m.accountId, -m.amount, { sourceId: m.id, kind: "expense", date: m.date, loggedAt: m.loggedAt });
+    } else if (m.fromAccountId !== m.toAccountId) {
+      push(m.fromAccountId, -m.amount, { sourceId: m.id, kind: "transferOut", date: m.date, loggedAt: m.loggedAt });
+      push(m.toAccountId, m.amount, { sourceId: m.id, kind: "transferIn", date: m.date, loggedAt: m.loggedAt });
+    }
+  }
+  for (const list of flows.values()) {
+    list.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.loggedAt ?? 0) - (b.loggedAt ?? 0)));
+  }
+  return { snapshots: indexSnapshots(wealth.snapshots), flows };
+}
+
+/**
+ * Did this entry happen after the check-in? Later dates always do. On the
+ * same day it only counts if it was logged after the balance was entered —
+ * otherwise the balance the user typed already included it. Without both
+ * timestamps (older data, backdated check-ins) a same-day entry is assumed
+ * to be included, which can't double-count.
+ */
+export function isAfterCheckIn(flow: Pick<Flow, "date" | "loggedAt">, snap: BalanceSnapshot): boolean {
+  if (flow.date !== snap.date) return flow.date > snap.date;
+  return flow.loggedAt !== undefined && snap.recordedAt !== undefined && flow.loggedAt > snap.recordedAt;
+}
+
+export interface LedgerBalance {
+  balance: number;
+  /** The check-in the estimate starts from. */
+  anchor: BalanceSnapshot;
+  /** Entries applied on top of the anchor. */
+  pending: Flow[];
+  adjustment: number;
+}
+
+/** Estimated balance at the end of `date`, or null before the first check-in. */
+export function balanceOn(ledger: Ledger, accountId: string, date: IsoDate): LedgerBalance | null {
+  const anchor = snapshotAt(ledger.snapshots.get(accountId), date);
+  if (!anchor) return null;
+  const pending = (ledger.flows.get(accountId) ?? []).filter((f) => f.date <= date && isAfterCheckIn(f, anchor));
+  const adjustment = roundMoney(pending.reduce((s, f) => s + f.delta, 0));
+  return { balance: roundMoney(anchor.balance + adjustment), anchor, pending, adjustment };
+}
+
 export interface NetWorthPoint {
   date: IsoDate;
   assets: number;
@@ -125,24 +227,20 @@ function emptyByClass(): Record<AssetClass, number> {
 }
 
 /**
- * Net worth as of `date`. Each account carries its latest known balance
- * forward — balances are entered occasionally, not daily. Archived accounts
- * still count for dates before they were closed out, so history stays honest;
- * a closed account should simply have a final £0 snapshot.
+ * Net worth at the end of `date`: each account's latest check-in carried
+ * forward, adjusted by entries logged since. Archived accounts still count
+ * for dates before they were closed out, so history stays honest; a closed
+ * account should simply have a final £0 check-in.
  */
-export function netWorthAt(
-  wealth: WealthState,
-  date: IsoDate,
-  index: Map<string, BalanceSnapshot[]> = indexSnapshots(wealth.snapshots),
-): NetWorthPoint {
+export function netWorthAt(wealth: WealthState, date: IsoDate, ledger: Ledger = buildLedger(wealth)): NetWorthPoint {
   const byClass = emptyByClass();
   let liabilities = 0;
   for (const acc of wealth.accounts) {
-    const snap = snapshotAt(index.get(acc.id), date);
-    if (!snap) continue;
+    const b = balanceOn(ledger, acc.id, date);
+    if (!b) continue;
     const meta = KIND_META[acc.kind];
-    if (meta.liability) liabilities += snap.balance;
-    else byClass[meta.assetClass!] += snap.balance;
+    if (meta.liability) liabilities += b.balance;
+    else byClass[meta.assetClass!] += b.balance;
   }
   for (const k of ASSET_CLASSES) byClass[k] = roundMoney(byClass[k]);
   const assets = roundMoney(ASSET_CLASSES.reduce((s, k) => s + byClass[k], 0));
@@ -156,12 +254,23 @@ export interface MonthlyNetWorth extends NetWorthPoint {
   hasData: boolean;
 }
 
-export function netWorthSeries(wealth: WealthState, fromMonth: Month, toMonth: Month): MonthlyNetWorth[] {
-  const index = indexSnapshots(wealth.snapshots);
+/**
+ * Month-end net worth. `cap` (usually today) stops the current month from
+ * counting future-dated entries.
+ */
+export function netWorthSeries(
+  wealth: WealthState,
+  fromMonth: Month,
+  toMonth: Month,
+  transactions: Transaction[] = [],
+  cap?: IsoDate,
+): MonthlyNetWorth[] {
+  const ledger = buildLedger(wealth, transactions);
   const first = firstSnapshotDate(wealth);
   return monthsBetween(fromMonth, toMonth).map((m) => {
     const end = monthEnd(m);
-    return { month: m, hasData: first !== null && first <= end, ...netWorthAt(wealth, end, index) };
+    const at = cap && cap < end ? cap : end;
+    return { month: m, hasData: first !== null && first <= end, ...netWorthAt(wealth, at, ledger) };
   });
 }
 
@@ -171,30 +280,56 @@ export function firstSnapshotDate(wealth: WealthState): IsoDate | null {
   return first;
 }
 
+export interface Reconciliation {
+  /** Previous check-in plus the entries logged in between. */
+  expected: number;
+  /** Actual − expected. Non-zero means something wasn't logged (or interest, fees, growth). */
+  gap: number;
+  entries: number;
+}
+
 export interface AccountView {
   account: WealthAccount;
+  /** Estimated balance: last check-in adjusted by entries since. */
   balance: number | null;
   /** Balance as a signed contribution to net worth. */
   signed: number;
+  /** Last check-in date — staleness is about check-ins, not entries. */
   lastUpdated: IsoDate | null;
   daysSinceUpdate: number | null;
-  /** Change versus the snapshot before the latest one. */
+  /** Last check-in balance, before entries logged since. */
+  checkInBalance: number | null;
+  /** Entries applied since the last check-in. */
+  pending: Flow[];
+  /** True when logged entries have moved the balance away from the last check-in. */
+  estimated: boolean;
+  /** Change versus the check-in before the latest one. */
   change: number | null;
   /** Investments/pensions: cumulative growth net of logged contributions. */
   growth: number | null;
   contributed: number;
   history: BalanceSnapshot[];
+  /** Per check-in (after the first): how it compared with what was logged. Only where entries existed. */
+  reconciliation: Record<string, Reconciliation>;
 }
 
-export function accountViews(wealth: WealthState, asOf: IsoDate, today: IsoDate): AccountView[] {
-  const index = indexSnapshots(wealth.snapshots);
+export function accountViews(
+  wealth: WealthState,
+  asOf: IsoDate,
+  today: IsoDate,
+  transactions: Transaction[] = [],
+): AccountView[] {
+  const ledger = buildLedger(wealth, transactions);
   return wealth.accounts.map((account) => {
-    const all = index.get(account.id) ?? [];
+    const all = ledger.snapshots.get(account.id) ?? [];
+    const flows = ledger.flows.get(account.id) ?? [];
     const history = all.filter((s) => s.date <= asOf);
     const latest = history[history.length - 1] ?? null;
     const prior = history[history.length - 2] ?? null;
     const liability = isLiability(account);
-    const balance = latest ? latest.balance : null;
+    const est = balanceOn(ledger, account.id, asOf);
+    const balance = est ? est.balance : null;
+
     let contributed = 0;
     for (let i = 1; i < history.length; i++) contributed += history[i]!.contribution ?? 0;
     const first = history[0];
@@ -203,16 +338,31 @@ export function accountViews(wealth: WealthState, asOf: IsoDate, today: IsoDate)
       tracksGrowth && latest && first && history.length > 1
         ? roundMoney(latest.balance - first.balance - contributed)
         : null;
+
+    const reconciliation: Record<string, Reconciliation> = {};
+    for (let i = 1; i < history.length; i++) {
+      const prev = history[i - 1]!;
+      const cur = history[i]!;
+      const between = flows.filter((f) => isAfterCheckIn(f, prev) && !isAfterCheckIn(f, cur));
+      if (between.length === 0) continue;
+      const expected = roundMoney(prev.balance + between.reduce((s, f) => s + f.delta, 0));
+      reconciliation[cur.id] = { expected, gap: roundMoney(cur.balance - expected), entries: between.length };
+    }
+
     return {
       account,
       balance,
       signed: balance === null ? 0 : liability ? -balance : balance,
       lastUpdated: latest?.date ?? null,
       daysSinceUpdate: latest ? daysBetween(latest.date, today) : null,
+      checkInBalance: latest?.balance ?? null,
+      pending: est?.pending ?? [],
+      estimated: (est?.pending.length ?? 0) > 0,
       change: latest && prior ? roundMoney(latest.balance - prior.balance) : null,
       growth,
       contributed: roundMoney(contributed),
       history,
+      reconciliation,
     };
   });
 }
@@ -221,23 +371,48 @@ export function accountViews(wealth: WealthState, asOf: IsoDate, today: IsoDate)
 
 export interface CashFlowMonth {
   month: Month;
+  /** Budget income for the month (logged salary or the manual figure). */
   income: number;
+  /** Logged income not assigned to a budget month — refunds, gifts, side money. */
+  otherIncome: number;
   needs: number;
   wants: number;
-  /** Needs + Wants — money that left for good. */
+  /** Needs + Wants — budget spending. */
   spending: number;
+  /** Logged off-budget spending (e.g. a holiday paid from savings). */
+  offBudget: number;
   /** Savings-category activity, as counted everywhere else in the app. */
   saved: number;
-  /** income − spending: what was available to save, invest or repay debt. */
+  totalIn: number;
+  totalOut: number;
+  /** totalIn − totalOut: what was left to save, invest or repay debt. */
   net: number;
-  /** net / income; null when no income was recorded. */
+  /** net / totalIn; null when nothing came in. */
   savingsRate: number | null;
   hasData: boolean;
 }
 
-export function cashFlowSeries(state: BudgetState, fromMonth: Month, toMonth: Month): CashFlowMonth[] {
+/**
+ * Money in vs out per month. Budget figures come from the engine; logged
+ * off-budget spending and unassigned income are added by date. Transfers
+ * are deliberately absent — moving your own money isn't in or out.
+ */
+export function cashFlowSeries(
+  state: BudgetState,
+  fromMonth: Month,
+  toMonth: Month,
+  movements: Movement[] = [],
+): CashFlowMonth[] {
   const byId = new Map<string, Category>();
   for (const c of state.categories) byId.set(c.id, c);
+  const other = new Map<Month, number>();
+  const off = new Map<Month, number>();
+  for (const mv of movements) {
+    if (!(mv.amount > 0)) continue;
+    const m = mv.date.slice(0, 7);
+    if (mv.type === "expense") off.set(m, (off.get(m) ?? 0) + mv.amount);
+    else if (mv.type === "income" && !mv.budgetMonth) other.set(m, (other.get(m) ?? 0) + mv.amount);
+  }
   const cache = createMonthCache();
   return monthsBetween(fromMonth, toMonth).map((m) => {
     const ms = computeMonth(state, m, cache);
@@ -252,25 +427,37 @@ export function cashFlowSeries(state: BudgetState, fromMonth: Month, toMonth: Mo
     wants = roundMoney(wants);
     const spending = roundMoney(needs + wants);
     const income = roundMoney(ms.income);
-    const net = roundMoney(income - spending);
+    const otherIncome = roundMoney(other.get(m) ?? 0);
+    const offBudget = roundMoney(off.get(m) ?? 0);
+    const totalIn = roundMoney(income + otherIncome);
+    const totalOut = roundMoney(spending + offBudget);
+    const net = roundMoney(totalIn - totalOut);
     return {
       month: m,
       income,
+      otherIncome,
       needs,
       wants,
       spending,
+      offBudget,
       saved: savingsThisMonth(state, ms),
+      totalIn,
+      totalOut,
       net,
-      savingsRate: income > 0 ? net / income : null,
-      hasData: income > 0 || spending > 0,
+      savingsRate: totalIn > 0 ? net / totalIn : null,
+      hasData: totalIn > 0 || totalOut > 0,
     };
   });
 }
 
 export interface CashFlowAverages {
   months: Month[];
+  /** All money in. */
   income: number;
+  /** All money out, budget and off-budget. */
   spending: number;
+  /** Needs + Wants only — for like-for-like comparison with a month in progress. */
+  budgetSpending: number;
   needs: number;
   net: number;
   savingsRate: number | null;
@@ -282,20 +469,26 @@ export interface CashFlowAverages {
  * understate spending. Falls back to the selected month alone when there's
  * no history yet.
  */
-export function trailingAverages(state: BudgetState, month: Month, n = 3): CashFlowAverages {
-  const series = cashFlowSeries(state, addMonths(month, -n), addMonths(month, -1)).filter((m) => m.hasData);
-  const pool = series.length > 0 ? series : cashFlowSeries(state, month, month).filter((m) => m.hasData);
+export function trailingAverages(
+  state: BudgetState,
+  month: Month,
+  n = 3,
+  movements: Movement[] = [],
+): CashFlowAverages {
+  const series = cashFlowSeries(state, addMonths(month, -n), addMonths(month, -1), movements).filter((m) => m.hasData);
+  const pool = series.length > 0 ? series : cashFlowSeries(state, month, month, movements).filter((m) => m.hasData);
   if (pool.length === 0) {
-    return { months: [], income: 0, spending: 0, needs: 0, net: 0, savingsRate: null };
+    return { months: [], income: 0, spending: 0, budgetSpending: 0, needs: 0, net: 0, savingsRate: null };
   }
   const avg = (f: (m: CashFlowMonth) => number) => roundMoney(pool.reduce((s, m) => s + f(m), 0) / pool.length);
-  const income = avg((m) => m.income);
-  const spending = avg((m) => m.spending);
+  const income = avg((m) => m.totalIn);
+  const spending = avg((m) => m.totalOut);
   const net = roundMoney(income - spending);
   return {
     months: pool.map((m) => m.month),
     income,
     spending,
+    budgetSpending: avg((m) => m.spending),
     needs: avg((m) => m.needs),
     net,
     savingsRate: income > 0 ? net / income : null,
@@ -396,10 +589,13 @@ const STATUS_POINTS: Record<MetricStatus, number | null> = {
 };
 
 export function healthReport({ wealth, budget, month, today }: HealthInput): HealthReport {
-  const current = netWorthAt(wealth, monthEnd(month));
-  const views = accountViews(wealth, monthEnd(month), today).filter((v) => !v.account.archived);
-  const averages = trailingAverages(budget, month);
-  const thisMonth = cashFlowSeries(budget, month, month)[0]!;
+  // Never count future-dated entries: the current month is "as of today".
+  const asOf = monthEnd(month) < today ? monthEnd(month) : today;
+  const ledger = buildLedger(wealth, budget.transactions);
+  const current = netWorthAt(wealth, asOf, ledger);
+  const views = accountViews(wealth, asOf, today, budget.transactions).filter((v) => !v.account.archived);
+  const averages = trailingAverages(budget, month, 3, wealth.movements);
+  const thisMonth = cashFlowSeries(budget, month, month, wealth.movements)[0]!;
   const profile: FinancialProfile = wealth.profile;
   const metrics: HealthMetric[] = [];
   const flags: HealthFlag[] = [];
@@ -474,7 +670,7 @@ export function healthReport({ wealth, budget, month, today }: HealthInput): Hea
       status: r >= 0.2 ? "good" : r >= 0.1 ? "ok" : r >= 0 ? "warn" : "bad",
       progress: Math.max(0, Math.min(1, r / 0.2)),
       target: "20% or more of income",
-      detail: `Income left after Needs + Wants, averaged over ${averages.months.length} month${averages.months.length === 1 ? "" : "s"}.`,
+      detail: `Income left after all spending (budget and off-budget), averaged over ${averages.months.length} month${averages.months.length === 1 ? "" : "s"}.`,
     });
     if (r < 0) {
       flags.push({
@@ -511,17 +707,24 @@ export function healthReport({ wealth, budget, month, today }: HealthInput): Hea
   }
 
   // 3. Spending running hot (this month vs. trailing average)
-  if (averages.spending > 0 && thisMonth.spending > averages.spending * 1.2 && averages.months[0] !== month) {
+  // Budget spending vs budget spending: off-budget one-offs would make every month look "hot".
+  if (
+    averages.budgetSpending > 0 &&
+    thisMonth.spending > averages.budgetSpending * 1.2 &&
+    averages.months[0] !== month
+  ) {
     flags.push({
       id: "spending-spike",
       severity: "warning",
       title: "Spending is running hot",
-      detail: `${fmt(thisMonth.spending)} spent so far this month, ${pct(thisMonth.spending / averages.spending - 1)} above your recent ${fmt(averages.spending)} average.`,
+      detail: `${fmt(thisMonth.spending)} of budget spending so far this month, ${pct(thisMonth.spending / averages.budgetSpending - 1)} above your recent ${fmt(averages.budgetSpending)} average.`,
     });
   }
 
   // 4. Debt-to-income (monthly repayments vs. income)
-  const debts = views.filter((v) => isLiability(v.account) && (v.balance ?? 0) > 0);
+  // Cards paid in full are spending on a short delay, not borrowing: they still
+  // count toward net worth and utilisation, but not debt-to-income or debt flags.
+  const debts = views.filter((v) => carriesBalance(v.account) && (v.balance ?? 0) > 0);
   const debtPayments = roundMoney(debts.reduce((s, v) => s + (v.account.monthlyPayment ?? 0), 0));
   const grossMonthly = profile.grossAnnualIncome ? profile.grossAnnualIncome / 12 : 0;
   const incomeBase = grossMonthly > 0 ? grossMonthly : averages.income;
@@ -533,7 +736,9 @@ export function healthReport({ wealth, budget, month, today }: HealthInput): Hea
       status: "good",
       progress: 0,
       target: "Under 20% of income",
-      detail: "No outstanding debts recorded.",
+      detail: views.some((v) => v.account.paysInFull && (v.balance ?? 0) > 0)
+        ? "No debt carried month to month — cards cleared in full don't count."
+        : "No outstanding debts recorded.",
     });
   } else if (debtPayments > 0 && incomeBase > 0) {
     const dti = debtPayments / incomeBase;
@@ -635,7 +840,9 @@ export function healthReport({ wealth, budget, month, today }: HealthInput): Hea
   }
 
   // 7. Net worth trend
-  const series = netWorthSeries(wealth, addMonths(month, -12), month).filter((p) => p.hasData);
+  const series = netWorthSeries(wealth, addMonths(month, -12), month, budget.transactions, today).filter(
+    (p) => p.hasData,
+  );
   if (series.length >= 2) {
     const first = series[0]!;
     const last = series[series.length - 1]!;

@@ -14,15 +14,16 @@ const rise = (i: number) => ({ "--rise-i": i }) as CSSProperties;
 export function CashFlowScreen() {
   const { effective } = useBudgetView();
   const month = useAppStore((s) => s.ui.selectedMonth);
+  const movements = useAppStore((s) => s.wealth.movements);
   const [range, setRange] = useState<6 | 12 | 24>(12);
   const from = addMonths(month, -(range - 1));
 
   const series = useMemo(() => {
-    const all = cashFlowSeries(effective, from, month);
+    const all = cashFlowSeries(effective, from, month, movements);
     // Trim empty months before tracking began, but keep at least six columns.
     const firstData = all.findIndex((m) => m.hasData);
     return firstData <= 0 ? all : all.slice(Math.min(firstData, Math.max(0, all.length - 6)));
-  }, [effective, from, month]);
+  }, [effective, from, month, movements]);
   const active = series.filter((m) => m.hasData);
   // The calendar month in progress would flatter savings and skew comparisons.
   const inProgress = currentMonth();
@@ -30,8 +31,8 @@ export function CashFlowScreen() {
   const stats = completed.length > 0 ? completed : active;
 
   const totals = useMemo(() => {
-    const income = roundMoney(active.reduce((s, m) => s + m.income, 0));
-    const spending = roundMoney(active.reduce((s, m) => s + m.spending, 0));
+    const income = roundMoney(active.reduce((s, m) => s + m.totalIn, 0));
+    const spending = roundMoney(active.reduce((s, m) => s + m.totalOut, 0));
     const needs = roundMoney(active.reduce((s, m) => s + m.needs, 0));
     const wants = roundMoney(active.reduce((s, m) => s + m.wants, 0));
     const net = roundMoney(income - spending);
@@ -40,8 +41,10 @@ export function CashFlowScreen() {
 
   const n = Math.max(1, stats.length);
   const statTotals = {
-    income: stats.reduce((s, m) => s + m.income, 0),
+    income: stats.reduce((s, m) => s + m.totalIn, 0),
     spending: stats.reduce((s, m) => s + m.spending, 0),
+    totalOut: stats.reduce((s, m) => s + m.totalOut, 0),
+    offBudget: stats.reduce((s, m) => s + m.offBudget, 0),
     needs: stats.reduce((s, m) => s + m.needs, 0),
     wants: stats.reduce((s, m) => s + m.wants, 0),
   };
@@ -109,7 +112,7 @@ export function CashFlowScreen() {
           </div>
           <div className="metric-tile">
             <div className="truncate text-[12px] font-semibold text-ink-soft">Avg out / month</div>
-            <div className="mt-2 stat-num text-[18px] font-semibold text-ink">{formatGBP(statTotals.spending / n)}</div>
+            <div className="mt-2 stat-num text-[18px] font-semibold text-ink">{formatGBP(statTotals.totalOut / n)}</div>
           </div>
         </div>
       </section>
@@ -117,7 +120,9 @@ export function CashFlowScreen() {
       <section className="dashboard-band rise" style={rise(1)}>
         <div className="mb-4">
           <h2 className="section-title">Money in vs out</h2>
-          <p className="text-[12px] text-ink-muted mt-0.5">Income above the line, spending below. Tap to inspect.</p>
+          <p className="text-[12px] text-ink-muted mt-0.5">
+            Income above the line, spending below. Transfers between your accounts aren't counted. Tap to inspect.
+          </p>
         </div>
         <CashFlowChart points={series} />
       </section>
@@ -187,6 +192,13 @@ export function CashFlowScreen() {
             value={`${spendTrend > 0 ? "+" : ""}${Math.round(spendTrend * 100)}%`}
             sub="Last 3 months vs prior 3"
             tone={spendTrend > 0.1 ? "over" : spendTrend < -0.05 ? "ok" : undefined}
+          />
+        )}
+        {statTotals.offBudget > 0 && (
+          <Tile
+            label="Off-budget spend"
+            value={formatGBP(statTotals.offBudget / n)}
+            sub="Per month, outside the budget"
           />
         )}
         <Tile

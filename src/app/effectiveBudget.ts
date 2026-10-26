@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import type { BudgetState, MonthlyBudget } from "../types.js";
-import type { BudgetReallocation } from "./state.js";
+import type { BudgetState, IncomeEntry, Month, MonthlyBudget } from "../types.js";
+import type { BudgetReallocation, IncomeMovement, Movement } from "./state.js";
 import { useAppStore } from "./store.js";
+import { roundMoney } from "./utils/money.js";
 
 export interface BudgetSource {
   baseline: MonthlyBudget[];
@@ -43,23 +44,57 @@ export function mergeBudgets(
   return Array.from(map.values());
 }
 
+/** Logged income that counts toward each budget month, grouped by that month. */
+export function linkedIncome(movements: Movement[]): Map<Month, IncomeMovement[]> {
+  const map = new Map<Month, IncomeMovement[]>();
+  for (const m of movements) {
+    if (m.type !== "income" || !m.budgetMonth || !(m.amount > 0)) continue;
+    const list = map.get(m.budgetMonth);
+    if (list) list.push(m);
+    else map.set(m.budgetMonth, [m]);
+  }
+  return map;
+}
+
+/**
+ * Budget income per month. Where income has been logged for a month, the
+ * month's income is exactly the sum of those entries; otherwise the manually
+ * set figure stands. The manual figure is never overwritten, so deleting the
+ * logged entries brings it back.
+ */
+export function mergeIncome(manual: IncomeEntry[], movements: Movement[]): IncomeEntry[] {
+  const linked = linkedIncome(movements);
+  if (linked.size === 0) return manual;
+  const out = manual.filter((e) => !linked.has(e.month));
+  for (const [month, list] of linked) {
+    out.push({ month, netAmount: roundMoney(list.reduce((s, m) => s + m.amount, 0)) });
+  }
+  return out;
+}
+
 export function makeEffectiveBudget(
   baseline: BudgetState,
   reallocations: BudgetReallocation[],
+  movements: Movement[] = [],
 ): BudgetState {
-  return { ...baseline, budgets: mergeBudgets(baseline.budgets, reallocations) };
+  return {
+    ...baseline,
+    budgets: mergeBudgets(baseline.budgets, reallocations),
+    income: mergeIncome(baseline.income, movements),
+  };
 }
 
 export function useBudgetView(): BudgetView {
   const baseline = useAppStore((s) => s.budget);
   const reallocations = useAppStore((s) => s.reallocations);
+  const movements = useAppStore((s) => s.wealth.movements);
   return useMemo(() => {
-    const effective = makeEffectiveBudget(baseline, reallocations);
+    const effective = makeEffectiveBudget(baseline, reallocations, movements);
     return {
       baselineBudgets: baseline.budgets,
       reallocations,
       source: { baseline: baseline.budgets, reallocations },
       effective,
     };
-  }, [baseline, reallocations]);
+  }, [baseline, reallocations, movements]);
 }

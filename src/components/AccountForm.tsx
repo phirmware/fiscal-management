@@ -132,6 +132,7 @@ export function AccountForm({
   const [limit, setLimit] = useState("");
   const [payment, setPayment] = useState("");
   const [emergency, setEmergency] = useState(false);
+  const [paysInFull, setPaysInFull] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -143,13 +144,17 @@ export function AccountForm({
     setLimit(toStr(editing?.creditLimit));
     setPayment(toStr(editing?.monthlyPayment));
     setEmergency(editing?.emergencyFund ?? false);
+    setPaysInFull(editing?.paysInFull ?? false);
     setError(null);
   }, [open, editing]);
 
   const meta = kind ? KIND_META[kind] : null;
   const isCash = kind === "current" || kind === "savings";
   const showRate = kind !== null && kind !== "property" && kind !== "otherAsset" && kind !== "crypto" && kind !== "current";
-  const showPayment = kind !== null && (meta!.liability || kind === "investment" || kind === "pension" || kind === "savings");
+  const fullPayer = kind === "creditCard" && paysInFull;
+  // A card cleared monthly has no fixed repayment — it's whatever the statement says.
+  const showPayment =
+    kind !== null && !fullPayer && (meta!.liability || kind === "investment" || kind === "pension" || kind === "savings");
 
   function save() {
     if (!kind) return;
@@ -168,6 +173,7 @@ export function AccountForm({
       creditLimit: kind === "creditCard" ? num(limit) : undefined,
       monthlyPayment: showPayment ? num(payment) : undefined,
       emergencyFund: isCash ? emergency : undefined,
+      paysInFull: kind === "creditCard" ? paysInFull : undefined,
     };
     if (editing) {
       updateAccount(editing.id, details);
@@ -276,6 +282,23 @@ export function AccountForm({
               onChange={setLimit}
               hint="Used to track utilisation — a big factor in your credit score."
             />
+          )}
+          {kind === "creditCard" && (
+            <label className="flex items-start gap-3 rounded-2xl bg-surface-sunken/60 px-4 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-[rgb(var(--c-accent))]"
+                checked={paysInFull}
+                onChange={(e) => setPaysInFull(e.target.checked)}
+              />
+              <span>
+                <span className="block text-[13px] font-semibold text-ink">I pay the full balance every month</span>
+                <span className="block text-[11px] text-ink-muted mt-0.5 leading-snug">
+                  No interest is charged, so it's not treated as debt in your health check. The balance still counts
+                  toward net worth until it's paid.
+                </span>
+              </span>
+            </label>
           )}
           {showRate && (
             <MoneyField

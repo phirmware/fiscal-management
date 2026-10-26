@@ -32,6 +32,12 @@ export interface Transaction {
   date: IsoDate;
   amount: number;
   note?: string;
+  /** Wealth account it was paid with. Ignored by the engine; moves that account's estimated balance. */
+  accountId?: string;
+  /** Epoch ms when logged — orders same-day entries against balance check-ins. */
+  loggedAt?: number;
+  /** Repeating rule this was logged from — marks that month's occurrence as done. */
+  recurringId?: string;
 }
 
 export interface SavingsAccount {

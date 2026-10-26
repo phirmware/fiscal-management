@@ -57,11 +57,14 @@ export function normaliseAppState(input: unknown): AppState {
     wealth: {
       accounts: src.wealth?.accounts ?? [],
       snapshots: src.wealth?.snapshots ?? [],
+      movements: src.wealth?.movements ?? [],
+      recurring: src.wealth?.recurring ?? [],
       profile: { ...emptyWealthState().profile, ...(src.wealth?.profile ?? {}) },
     },
     ui: {
       selectedMonth: src.ui?.selectedMonth ?? base.ui.selectedMonth,
       lastUsedCategoryId: src.ui?.lastUsedCategoryId ?? null,
+      lastUsedAccountId: src.ui?.lastUsedAccountId ?? null,
       hasOnboarded: src.ui?.hasOnboarded ?? false,
       theme: src.ui?.theme ?? "system",
     },

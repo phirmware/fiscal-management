@@ -98,6 +98,12 @@ export function UpdateBalances({
           onChange={(e) => setDate(e.target.value)}
         />
       </div>
+      {active.some((v) => v.estimated) && (
+        <p className="mt-3 text-[12px] text-ink-muted leading-snug">
+          Some balances are prefilled with estimates from what you've logged. Replace them with what your bank shows —
+          any difference is accepted as the new starting point.
+        </p>
+      )}
       <ul role="list" className="mt-3 divide-y divide-surface-border/70">
         {active.map((v) => {
           const meta = KIND_META[v.account.kind];
@@ -114,12 +120,20 @@ export function UpdateBalances({
                 </label>
                 <p className="truncate text-[11px] text-ink-muted">
                   {meta.liability ? "Owed · " : ""}
-                  {v.lastUpdated ? friendlyDayLabel(v.lastUpdated) : "No balance yet"}
+                  {v.estimated ? (
+                    <span className="text-accent font-medium">
+                      Estimated from {v.pending.length} {v.pending.length === 1 ? "entry" : "entries"}
+                    </span>
+                  ) : v.lastUpdated ? (
+                    friendlyDayLabel(v.lastUpdated)
+                  ) : (
+                    "No balance yet"
+                  )}
                   {delta !== null && delta !== 0 && (
-                    <span className="stat-num">
+                    <span className="stat-num text-status-warn">
                       {" · "}
                       {delta > 0 ? "+" : "−"}
-                      {formatGBP(Math.abs(delta))}
+                      {formatGBP(Math.abs(delta))} {v.estimated ? "vs estimate" : ""}
                     </span>
                   )}
                 </p>

@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { monthFromDate } from "../engine.js";
+import type { ExpenseMovement, IncomeMovement, RecurringRule, TransferMovement } from "../app/state.js";
+import { entryFor, occurrencesFor, ordinal } from "../app/recurring.js";
+import type { Occurrence } from "../app/recurring.js";
 import { useAppStore } from "../app/store.js";
-import { formatGBP, parseMoneyInput, roundMoney } from "../app/utils/money.js";
-import { friendlyDayLabel, isValidIsoDate, monthLabel, todayIso } from "../app/utils/month.js";
+import { formatGBP, roundMoney } from "../app/utils/money.js";
+import { friendlyDayLabel, monthLabel, todayIso } from "../app/utils/month.js";
 import { AnimatedGBP } from "../components/AnimatedNumber.js";
+import { EntryModal } from "../components/EntryModal.js";
+import type { EditTarget, Prefill } from "../components/EntryModal.js";
 import { Modal } from "../components/Modal.js";
-import { Select } from "../components/Select.js";
 import { showToast } from "../components/Toast.js";
-import type { Transaction } from "../types.js";
+import type { Category, Transaction } from "../types.js";
 
 function SearchIcon({ className }: { className?: string }) {
   return (
@@ -24,87 +28,154 @@ function SearchIcon({ className }: { className?: string }) {
   );
 }
 
+type TypeFilter = "all" | "spend" | "income" | "transfer" | "expense";
+
+type Entry =
+  | { kind: "spend"; id: string; date: string; loggedAt: number; t: Transaction }
+  | { kind: "income"; id: string; date: string; loggedAt: number; m: IncomeMovement }
+  | { kind: "transfer"; id: string; date: string; loggedAt: number; m: TransferMovement }
+  | { kind: "expense"; id: string; date: string; loggedAt: number; m: ExpenseMovement };
+
 export function TransactionsScreen() {
   const budget = useAppStore((s) => s.budget);
+  const wealth = useAppStore((s) => s.wealth);
   const month = useAppStore((s) => s.ui.selectedMonth);
   const lastCategoryId = useAppStore((s) => s.ui.lastUsedCategoryId);
-  const addTxn = useAppStore((s) => s.addTransaction);
-  const editTxn = useAppStore((s) => s.editTransaction);
-  const deleteTxn = useAppStore((s) => s.deleteTransaction);
 
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [filterCat, setFilterCat] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Transaction | null>(null);
+  const [editing, setEditing] = useState<EditTarget>(null);
+  const [prefill, setPrefill] = useState<Prefill | null>(null);
+  const [manageOpen, setManageOpen] = useState(false);
+  const addTxn = useAppStore((s) => s.addTransaction);
+  const addMovement = useAppStore((s) => s.addMovement);
+  const skipOccurrence = useAppStore((s) => s.skipOccurrence);
 
   const categoriesById = useMemo(
     () => new Map(budget.categories.map((c) => [c.id, c])),
     [budget.categories],
   );
+  const accountsById = useMemo(
+    () => new Map(wealth.accounts.map((a) => [a.id, a])),
+    [wealth.accounts],
+  );
+  const accountName = (id: string | undefined) => (id ? accountsById.get(id)?.name ?? "Deleted account" : "");
 
-  const monthList = useMemo(
-    () => budget.transactions.filter((t) => monthFromDate(t.date) === month),
-    [budget.transactions, month],
+  const monthEntries = useMemo(() => {
+    const out: Entry[] = [];
+    for (const t of budget.transactions) {
+      if (monthFromDate(t.date) === month) out.push({ kind: "spend", id: t.id, date: t.date, loggedAt: t.loggedAt ?? 0, t });
+    }
+    for (const m of wealth.movements) {
+      if (m.date.slice(0, 7) !== month) continue;
+      if (m.type === "income") out.push({ kind: "income", id: m.id, date: m.date, loggedAt: m.loggedAt, m });
+      else if (m.type === "expense") out.push({ kind: "expense", id: m.id, date: m.date, loggedAt: m.loggedAt, m });
+      else out.push({ kind: "transfer", id: m.id, date: m.date, loggedAt: m.loggedAt, m });
+    }
+    return out;
+  }, [budget.transactions, wealth.movements, month]);
+
+  const monthSpends = useMemo(
+    () => monthEntries.filter((e): e is Extract<Entry, { kind: "spend" }> => e.kind === "spend"),
+    [monthEntries],
   );
 
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return monthList
-      .filter((t) => filterCat === "all" || t.categoryId === filterCat)
-      .filter((t) => {
+    return monthEntries
+      .filter((e) => {
+        if (filterCat !== "all") return e.kind === "spend" && e.t.categoryId === filterCat;
+        return typeFilter === "all" || e.kind === typeFilter;
+      })
+      .filter((e) => {
         if (!q) return true;
-        const cat = categoriesById.get(t.categoryId);
-        return (
-          (t.note ?? "").toLowerCase().includes(q) ||
-          (cat?.name ?? "").toLowerCase().includes(q)
-        );
+        const hay =
+          e.kind === "spend"
+            ? [e.t.note, categoriesById.get(e.t.categoryId)?.name, accountName(e.t.accountId)]
+            : e.kind === "income"
+              ? [e.m.note, e.m.source === "salary" ? "salary" : "income", accountName(e.m.accountId)]
+              : e.kind === "expense"
+                ? [e.m.note, "off-budget", accountName(e.m.accountId)]
+                : [e.m.note, "transfer", accountName(e.m.fromAccountId), accountName(e.m.toAccountId)];
+        return hay.some((h) => (h ?? "").toLowerCase().includes(q));
       })
       .slice()
-      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? 1 : -1));
-  }, [monthList, filterCat, query, categoriesById]);
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.loggedAt - a.loggedAt || (a.id < b.id ? 1 : -1)));
+  }, [monthEntries, filterCat, typeFilter, query, categoriesById, accountsById]);
 
-  const monthTotal = roundMoney(list.reduce((s, t) => s + t.amount, 0));
+  const spentTotal = roundMoney(list.reduce((s, e) => s + (e.kind === "spend" ? e.t.amount : 0), 0));
+  const incomeTotal = roundMoney(monthEntries.reduce((s, e) => s + (e.kind === "income" ? e.m.amount : 0), 0));
+  const offBudgetTotal = roundMoney(monthEntries.reduce((s, e) => s + (e.kind === "expense" ? e.m.amount : 0), 0));
+  const counts = {
+    all: monthEntries.length,
+    spend: monthSpends.length,
+    income: monthEntries.filter((e) => e.kind === "income").length,
+    transfer: monthEntries.filter((e) => e.kind === "transfer").length,
+    expense: monthEntries.filter((e) => e.kind === "expense").length,
+  };
 
-  // Group transactions by date for the list
   const groupedByDate = useMemo(() => {
-    const groups: { date: string; label: string; items: typeof list }[] = [];
-    const map = new Map<string, typeof list>();
-    for (const t of list) {
-      if (!map.has(t.date)) map.set(t.date, []);
-      map.get(t.date)!.push(t);
+    const map = new Map<string, Entry[]>();
+    for (const e of list) {
+      const g = map.get(e.date);
+      if (g) g.push(e);
+      else map.set(e.date, [e]);
     }
-    for (const [date, items] of map) {
-      groups.push({ date, label: friendlyDayLabel(date), items });
-    }
-    return groups;
+    return Array.from(map, ([date, items]) => ({ date, label: friendlyDayLabel(date), items }));
   }, [list]);
 
-  // Counts per category for the filter chips
   const countsByCat = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const t of monthList) {
-      counts.set(t.categoryId, (counts.get(t.categoryId) ?? 0) + 1);
-    }
+    for (const e of monthSpends) counts.set(e.t.categoryId, (counts.get(e.t.categoryId) ?? 0) + 1);
     return counts;
-  }, [monthList]);
+  }, [monthSpends]);
 
-  const showSearch = monthList.length > 6 || query !== "";
+  const showSearch = monthEntries.length > 6 || query !== "";
+  const canAdd = budget.categories.length > 0 || wealth.accounts.length > 0;
+  const hasAccounts = wealth.accounts.length > 0;
 
-  function handleDelete(t: Transaction) {
-    deleteTxn(t.id);
-    setOpen(false);
-    const cat = categoriesById.get(t.categoryId);
-    showToast(`Deleted ${formatGBP(t.amount)}${cat ? ` from ${cat.name}` : ""}`, {
-      actionLabel: "Undo",
-      onAction: () => {
-        addTxn({
-          categoryId: t.categoryId,
-          date: t.date,
-          amount: t.amount,
-          ...(t.note ? { note: t.note } : {}),
-        });
-      },
-    });
+  function openEntry(target: EditTarget) {
+    setPrefill(null);
+    setEditing(target);
+    setOpen(true);
+  }
+
+  const today = todayIso();
+  const occurrences = useMemo(
+    () => occurrencesFor(wealth, budget.transactions, month, today),
+    [wealth, budget.transactions, month, today],
+  );
+
+  function describeRule(rule: RecurringRule): { title: string; subtitle: string } {
+    const t = rule.template;
+    const when = `Monthly on the ${ordinal(rule.day)}`;
+    if (t.kind === "spend") {
+      const cat = categoriesById.get(t.categoryId)?.name ?? "Deleted category";
+      return { title: t.note || cat, subtitle: `${when} · ${t.note ? `${cat} · ` : ""}${t.accountId ? accountName(t.accountId) : "budget only"}` };
+    }
+    if (t.kind === "income") {
+      return { title: t.note || (t.source === "salary" ? "Salary" : "Income"), subtitle: `${when} · into ${accountName(t.accountId)}` };
+    }
+    if (t.kind === "expense") {
+      return { title: t.note || "Off-budget spend", subtitle: `${when} · from ${accountName(t.accountId)}` };
+    }
+    return {
+      title: t.note || (t.payFullBalance ? `Pay off ${accountName(t.toAccountId)}` : "Transfer"),
+      subtitle: `${when} · ${accountName(t.fromAccountId)} → ${accountName(t.toAccountId)}${t.payFullBalance ? " · full balance" : ""}`,
+    };
+  }
+
+  function logNow(o: Occurrence) {
+    if (o.amount === null) return;
+    const e = entryFor(o.rule, o.date, o.amount);
+    if (e.kind === "spend") addTxn(e.input);
+    else if (!addMovement(e.input)) {
+      showToast("Couldn't log — check the rule's accounts still exist");
+      return;
+    }
+    showToast(`${describeRule(o.rule).title} logged · ${formatGBP(o.amount)}`);
   }
 
   return (
@@ -115,21 +186,13 @@ export function TransactionsScreen() {
       >
         <div className="section-row">
           <span className="section-eyebrow">Spent in {monthLabel(month)}</span>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={() => {
-              setEditing(null);
-              setOpen(true);
-            }}
-            disabled={budget.categories.length === 0}
-          >
+          <button type="button" className="btn-secondary btn-sm" onClick={() => openEntry(null)} disabled={!canAdd}>
             + Add
           </button>
         </div>
         <div className="mt-2">
           <h2 className="text-display-xl text-balance-gradient stat-num">
-            <AnimatedGBP value={monthTotal} />
+            <AnimatedGBP value={spentTotal} />
           </h2>
         </div>
         <div className="text-[12px] text-ink-muted mt-1">
@@ -149,6 +212,21 @@ export function TransactionsScreen() {
             </>
           )}
         </div>
+        {hasAccounts && (incomeTotal > 0 || offBudgetTotal > 0) && (
+          <div className="hero-metrics mt-5">
+            <div className="metric-tile">
+              <div className="truncate text-[12px] font-semibold text-ink-soft">Money in</div>
+              <div className="mt-2 stat-num text-[18px] font-semibold text-status-ok">+{formatGBP(incomeTotal)}</div>
+            </div>
+            <div className="metric-tile">
+              <div className="truncate text-[12px] font-semibold text-ink-soft">Off-budget spend</div>
+              <div className="mt-2 stat-num text-[18px] font-semibold text-ink">
+                {offBudgetTotal > 0 ? "−" : ""}
+                {formatGBP(offBudgetTotal)}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {showSearch && (
@@ -161,10 +239,10 @@ export function TransactionsScreen() {
             type="search"
             name="txn-search"
             className="input-base !pl-10 !py-2.5"
-            placeholder="Search notes and categories…"
+            placeholder="Search notes, categories, accounts…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search transactions"
+            aria-label="Search activity"
           />
           {query !== "" && (
             <button
@@ -179,39 +257,78 @@ export function TransactionsScreen() {
         </div>
       )}
 
-      {budget.categories.length > 0 && (
+      {(occurrences.length > 0 || wealth.recurring.length > 0) && (
+        <DueSection
+          occurrences={occurrences}
+          ruleCount={wealth.recurring.length}
+          describe={describeRule}
+          onLog={logNow}
+          onReview={(o) => {
+            setPrefill({ rule: o.rule, date: o.date, amount: o.amount });
+            setEditing(null);
+            setOpen(true);
+          }}
+          onSkip={(o) => {
+            skipOccurrence(o.rule.id, o.month);
+            showToast(`Skipped ${describeRule(o.rule).title} for ${monthLabel(o.month)}`);
+          }}
+          onManage={() => setManageOpen(true)}
+        />
+      )}
+
+      {canAdd && (
         <div
           className="-mx-4 px-4 overflow-x-auto no-scrollbar rise"
           style={{ "--rise-i": 2 } as React.CSSProperties}
           role="tablist"
-          aria-label="Filter by category"
+          aria-label="Filter activity"
         >
           <div className="flex gap-2 pb-1 min-w-min">
-            <FilterChip
-              label="All"
-              count={monthList.length}
-              active={filterCat === "all"}
-              onClick={() => setFilterCat("all")}
-            />
-            {budget.categories.map((c) => {
-              const count = countsByCat.get(c.id) ?? 0;
-              if (count === 0 && filterCat !== c.id) return null;
-              return (
+            {hasAccounts && (counts.income > 0 || counts.transfer > 0 || counts.expense > 0 || typeFilter !== "all") ? (
+              (["all", "spend", "income", "transfer", "expense"] as const)
+                .filter((t) => t === "all" || t === "spend" || counts[t] > 0 || typeFilter === t)
+                .map((t) => (
                 <FilterChip
-                  key={c.id}
-                  label={c.name}
-                  count={count}
-                  active={filterCat === c.id}
-                  group={c.group}
-                  onClick={() => setFilterCat(filterCat === c.id ? "all" : c.id)}
+                  key={t}
+                  label={
+                    t === "all" ? "All" : t === "spend" ? "Spending" : t === "income" ? "Income" : t === "transfer" ? "Transfers" : "Off-budget"
+                  }
+                  count={counts[t]}
+                  active={filterCat === "all" && typeFilter === t}
+                  onClick={() => {
+                    setFilterCat("all");
+                    setTypeFilter(t);
+                  }}
                 />
-              );
-            })}
+              ))
+            ) : (
+              <FilterChip
+                label="All"
+                count={monthEntries.length}
+                active={filterCat === "all"}
+                onClick={() => setFilterCat("all")}
+              />
+            )}
+            {(typeFilter === "all" || typeFilter === "spend") &&
+              budget.categories.map((c) => {
+                const count = countsByCat.get(c.id) ?? 0;
+                if (count === 0 && filterCat !== c.id) return null;
+                return (
+                  <FilterChip
+                    key={c.id}
+                    label={c.name}
+                    count={count}
+                    active={filterCat === c.id}
+                    group={c.group}
+                    onClick={() => setFilterCat(filterCat === c.id ? "all" : c.id)}
+                  />
+                );
+              })}
           </div>
         </div>
       )}
 
-      {budget.categories.length === 0 ? (
+      {!canAdd ? (
         <div className="card p-10 text-center rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
           <p className="text-[14px] text-ink-soft">Create a category first to start logging spend.</p>
         </div>
@@ -226,18 +343,16 @@ export function TransactionsScreen() {
               strokeLinecap="round"
             />
           </svg>
-          {query.trim() !== "" || filterCat !== "all" ? (
+          {query.trim() !== "" || filterCat !== "all" || typeFilter !== "all" ? (
             <>
               <p className="text-[15px] font-semibold text-ink">No matches</p>
-              <p className="text-[13px] text-ink-muted mt-1">
-                Try clearing the search or the category filter.
-              </p>
+              <p className="text-[13px] text-ink-muted mt-1">Try clearing the search or the filter.</p>
             </>
           ) : (
             <>
               <p className="text-[15px] font-semibold text-ink">Nothing logged yet</p>
               <p className="text-[13px] text-ink-muted mt-1">
-                Tap <span className="font-semibold text-ink-soft">+ Add</span> to log your first spend.
+                Tap <span className="font-semibold text-ink-soft">+ Add</span> to log spending, income or a transfer.
               </p>
             </>
           )}
@@ -245,7 +360,7 @@ export function TransactionsScreen() {
       ) : (
         <div className="flex flex-col gap-3">
           {groupedByDate.map((group, gi) => {
-            const dayTotal = roundMoney(group.items.reduce((s, t) => s + t.amount, 0));
+            const daySpend = roundMoney(group.items.reduce((s, e) => s + (e.kind === "spend" ? e.t.amount : 0), 0));
             return (
               <section
                 key={group.date}
@@ -259,53 +374,25 @@ export function TransactionsScreen() {
                     after:content-[''] after:absolute after:inset-x-4 after:bottom-0
                     after:h-px after:bg-surface-border/50"
                 >
-                  <span className="text-[12px] font-semibold text-ink-soft">
-                    {group.label}
-                  </span>
-                  <span className="text-[11px] text-ink-muted stat-num font-medium">
-                    {formatGBP(dayTotal)}
-                  </span>
+                  <span className="text-[12px] font-semibold text-ink-soft">{group.label}</span>
+                  {daySpend !== 0 && (
+                    <span className="text-[11px] text-ink-muted stat-num font-medium">{formatGBP(daySpend)} spent</span>
+                  )}
                 </div>
                 <ul role="list" className="ledger-panel">
-                  {group.items.map((t) => {
-                    const cat = categoriesById.get(t.categoryId);
-                    const groupName = cat?.group ?? "Wants";
-                    return (
-                      <li
-                        key={t.id}
-                        className="relative z-[1] border-b border-surface-border/60 last:border-b-0"
+                  {group.items.map((e) => (
+                    <li key={e.id} className="relative z-[1] border-b border-surface-border/60 last:border-b-0">
+                      <button
+                        type="button"
+                        className="w-full text-left px-4 py-3.5 flex items-center gap-3
+                          transition hover:bg-surface-sunken/60 active:bg-surface-sunken/80
+                          focus-ring"
+                        onClick={() => openEntry(e.kind === "spend" ? { kind: "spend", t: e.t } : { kind: "movement", m: e.m })}
                       >
-                        <button
-                          type="button"
-                          className="w-full text-left px-4 py-3.5 flex items-center gap-3
-                            transition hover:bg-surface-sunken/60 active:bg-surface-sunken/80
-                            focus-ring"
-                          onClick={() => {
-                            setEditing(t);
-                            setOpen(true);
-                          }}
-                        >
-                          <CategoryAvatar
-                            name={cat?.name ?? "?"}
-                            group={groupName}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
-                              {t.note?.trim() ? t.note : (cat?.name ?? "Unknown")}
-                            </div>
-                            <div className="text-[11px] text-ink-muted truncate mt-0.5">
-                              {t.note?.trim() ? cat?.name ?? "Unknown" : groupName}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
-                              −{formatGBP(t.amount)}
-                            </div>
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })}
+                        <EntryRow entry={e} categoriesById={categoriesById} accountName={accountName} />
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </section>
             );
@@ -313,177 +400,122 @@ export function TransactionsScreen() {
         </div>
       )}
 
-      <TxnModal
+      <EntryModal
         open={open}
         onClose={() => setOpen(false)}
         editing={editing}
         month={month}
-        defaultCategoryId={lastCategoryId ?? budget.categories[0]?.id ?? null}
         categories={budget.categories}
-        onSave={(payload) => {
-          if (editing) {
-            editTxn(editing.id, payload);
-            showToast("Transaction updated");
-          } else {
-            addTxn(payload);
-            const cat = categoriesById.get(payload.categoryId);
-            showToast(`${formatGBP(payload.amount)} logged${cat ? ` to ${cat.name}` : ""}`);
-          }
-          setOpen(false);
-        }}
-        onDelete={editing ? () => handleDelete(editing) : undefined}
+        defaultCategoryId={lastCategoryId ?? budget.categories[0]?.id ?? null}
+        initialKind={budget.categories.length === 0 ? "income" : "spend"}
+        prefill={prefill}
       />
+      <ManageRepeating open={manageOpen} onClose={() => setManageOpen(false)} describe={describeRule} />
     </div>
   );
 }
 
-function TxnModal({
-  open,
-  onClose,
-  editing,
-  month,
-  defaultCategoryId,
-  categories,
-  onSave,
-  onDelete,
+function EntryRow({
+  entry: e,
+  categoriesById,
+  accountName,
 }: {
-  open: boolean;
-  onClose: () => void;
-  editing: Transaction | null;
-  month: string;
-  defaultCategoryId: string | null;
-  categories: { id: string; name: string }[];
-  onSave: (payload: { categoryId: string; date: string; amount: number; note?: string }) => void;
-  onDelete?: () => void;
+  entry: Entry;
+  categoriesById: Map<string, Category>;
+  accountName: (id: string | undefined) => string;
 }) {
-  const [categoryId, setCategoryId] = useState<string>(
-    editing?.categoryId ?? defaultCategoryId ?? "",
-  );
-  const [date, setDate] = useState<string>(editing?.date ?? todayIso());
-  const [amount, setAmount] = useState<string>(editing ? String(editing.amount) : "");
-  const [note, setNote] = useState<string>(editing?.note ?? "");
-
-  // Reset when modal opens
-  useReset(open, () => {
-    setCategoryId(editing?.categoryId ?? defaultCategoryId ?? "");
-    setDate(editing?.date ?? todayIso());
-    setAmount(editing ? String(editing.amount) : "");
-    setNote(editing?.note ?? "");
-  });
-
-  const dateValid = isValidIsoDate(date);
-  const canSave = !!categoryId && parseMoneyInput(amount) !== null && dateValid;
-  const differentMonth = dateValid && !date.startsWith(month);
-
-  function submit() {
-    const a = parseMoneyInput(amount);
-    if (!categoryId || a === null || !dateValid) return;
-    onSave({ categoryId, date, amount: a, note: note.trim() || undefined });
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editing ? "Edit transaction" : "New transaction"}
-      onSubmit={submit}
-      footer={
-        <>
-          {onDelete && (
-            <button type="button" className="btn-danger mr-auto" onClick={onDelete}>
-              Delete
-            </button>
-          )}
-          <button type="button" className="btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="btn-accent" disabled={!canSave}>
-            {editing ? "Save" : "Add"}
-          </button>
-        </>
-      }
-    >
-      <div className="flex flex-col gap-4">
-        <label className="block">
-          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Amount</span>
-          <div className="relative">
-            <span
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted
-                text-lg font-semibold pointer-events-none"
-              aria-hidden="true"
-            >
-              £
-            </span>
-            <input
-              type="text"
-              name="amount"
-              inputMode="decimal"
-              className="input-base !pl-7 text-xl font-semibold stat-num"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
-              autoFocus
-            />
+  if (e.kind === "spend") {
+    const cat = categoriesById.get(e.t.categoryId);
+    const groupName = cat?.group ?? "Wants";
+    const via = e.t.accountId ? ` · ${accountName(e.t.accountId)}` : "";
+    return (
+      <>
+        <CategoryAvatar name={cat?.name ?? "?"} group={groupName} />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold tracking-tight text-ink truncate">
+            {e.t.note?.trim() ? e.t.note : (cat?.name ?? "Unknown")}
           </div>
-        </label>
-        <label className="block">
-          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Category</span>
-          <Select
-            name="category"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
-            <option value="" disabled>
-              Choose…
-            </option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="block">
-          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">Date</span>
-          <input
-            type="date"
-            name="date"
-            className="input-base"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-          {!dateValid && date !== "" && (
-            <p className="text-[12px] text-status-over mt-1.5">Enter a valid date.</p>
-          )}
-          {differentMonth && (
-            <p className="text-[12px] text-status-info mt-1.5 leading-snug">
-              This date is outside {monthLabel(month)} — the entry will appear under{" "}
-              {monthLabel(date.slice(0, 7))}.
-            </p>
-          )}
-        </label>
-        <label className="block">
-          <span className="block text-[13px] font-medium text-ink-soft mb-1.5">
-            Note <span className="text-ink-muted font-normal">(optional)</span>
-          </span>
-          <input
-            className="input-base"
-            name="note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Weekly shop"
-          />
-        </label>
+          <div className="text-[11px] text-ink-muted truncate mt-0.5">
+            {(e.t.note?.trim() ? cat?.name ?? "Unknown" : groupName) + via}
+          </div>
+        </div>
+        <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">
+          {e.t.amount < 0 ? "+" : "−"}
+          {formatGBP(Math.abs(e.t.amount))}
+        </div>
+      </>
+    );
+  }
+  if (e.kind === "income") {
+    const m = e.m;
+    const label = m.source === "salary" ? "Salary" : "Income";
+    return (
+      <>
+        <MovementAvatar kind="income" />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold tracking-tight text-ink truncate">{m.note?.trim() || label}</div>
+          <div className="text-[11px] text-ink-muted truncate mt-0.5">
+            {m.note?.trim() ? `${label} · ` : ""}Into {accountName(m.accountId)}
+            {m.budgetMonth && ` · ${monthLabel(m.budgetMonth).split(" ")[0]} budget`}
+          </div>
+        </div>
+        <div className="text-[15px] font-semibold stat-num text-status-ok whitespace-nowrap">+{formatGBP(m.amount)}</div>
+      </>
+    );
+  }
+  if (e.kind === "expense") {
+    const m = e.m;
+    return (
+      <>
+        <MovementAvatar kind="expense" />
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold tracking-tight text-ink truncate">{m.note?.trim() || "Off-budget spend"}</div>
+          <div className="text-[11px] text-ink-muted truncate mt-0.5">
+            {m.note?.trim() ? "Off-budget · " : ""}From {accountName(m.accountId)}
+          </div>
+        </div>
+        <div className="text-[15px] font-semibold stat-num text-ink whitespace-nowrap">−{formatGBP(m.amount)}</div>
+      </>
+    );
+  }
+  const m = e.m;
+  return (
+    <>
+      <MovementAvatar kind="transfer" />
+      <div className="min-w-0 flex-1">
+        <div className="text-[14px] font-semibold tracking-tight text-ink truncate">{m.note?.trim() || "Transfer"}</div>
+        <div className="text-[11px] text-ink-muted truncate mt-0.5">
+          {accountName(m.fromAccountId)} → {accountName(m.toAccountId)}
+        </div>
       </div>
-    </Modal>
+      <div className="text-[15px] font-semibold stat-num text-ink-soft whitespace-nowrap">{formatGBP(m.amount)}</div>
+    </>
   );
 }
 
-function useReset(open: boolean, fn: () => void) {
-  useEffect(() => {
-    if (open) fn();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+function MovementAvatar({ kind }: { kind: "income" | "transfer" | "expense" }) {
+  const v = kind === "income" ? "--c-status-ok" : kind === "expense" ? "--c-debt" : "--c-accent";
+  return (
+    <div
+      className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+      style={{
+        background: `rgb(var(${v}) / 0.14)`,
+        color: `rgb(var(${v}))`,
+        boxShadow: `inset 0 0 0 1px rgb(var(${v}) / 0.18)`,
+      }}
+      aria-hidden="true"
+    >
+      <svg viewBox="0 0 20 20" className="size-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        {kind === "income" ? (
+          <path d="M10 15V5m-4 4 4-4 4 4" />
+        ) : kind === "expense" ? (
+          <path d="M10 5v10m-4-4 4 4 4-4" />
+        ) : (
+          <path d="M4 7h11l-3-3M16 13H5l3 3" />
+        )}
+      </svg>
+    </div>
+  );
 }
 
 const GROUP_VAR: Record<string, string> = {
@@ -565,5 +597,160 @@ function CategoryAvatar({ name, group }: { name: string; group: string }) {
     >
       {categoryInitials(name)}
     </div>
+  );
+}
+
+function DueSection({
+  occurrences,
+  ruleCount,
+  describe,
+  onLog,
+  onReview,
+  onSkip,
+  onManage,
+}: {
+  occurrences: Occurrence[];
+  ruleCount: number;
+  describe: (r: RecurringRule) => { title: string; subtitle: string };
+  onLog: (o: Occurrence) => void;
+  onReview: (o: Occurrence) => void;
+  onSkip: (o: Occurrence) => void;
+  onManage: () => void;
+}) {
+  return (
+    <section className="rise" style={{ "--rise-i": 2 } as React.CSSProperties}>
+      <div className="section-row mb-2 px-1">
+        <h2 className="section-title">Repeating this month</h2>
+        <button
+          type="button"
+          className="text-[12px] font-medium text-accent hover:underline underline-offset-2"
+          onClick={onManage}
+        >
+          Manage ({ruleCount})
+        </button>
+      </div>
+      {occurrences.length === 0 ? (
+        <p className="px-1 text-[12px] text-ink-muted">All logged or skipped for this month.</p>
+      ) : (
+        <ul role="list" className="ledger-panel rounded-3xl">
+          {occurrences.map((o) => {
+            const d = describe(o.rule);
+            return (
+              <li key={o.rule.id} className="relative z-[1] border-b border-surface-border/60 last:border-b-0 px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold tracking-tight text-ink">{d.title}</p>
+                    <p className="truncate text-[11px] text-ink-muted mt-0.5">
+                      <span className={o.status === "due" ? "font-semibold text-status-warn" : ""}>
+                        {o.status === "due" ? "Due" : "Upcoming"} {friendlyDayLabel(o.date)}
+                      </span>
+                      {" · "}
+                      {d.subtitle.replace(/^Monthly on the \w+ · /, "")}
+                    </p>
+                    {o.similarDate && (
+                      <p className="text-[11px] text-ink-muted mt-1">
+                        Similar entry already logged ({friendlyDayLabel(o.similarDate)}) — skip if that was it.
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[14px] font-semibold text-ink stat-num whitespace-nowrap">
+                    {o.amount === null ? "Nothing owed" : formatGBP(o.amount)}
+                  </p>
+                </div>
+                <div className="mt-2.5 flex gap-2">
+                  <button
+                    type="button"
+                    className="btn-accent btn-sm"
+                    disabled={o.amount === null}
+                    onClick={() => onLog(o)}
+                  >
+                    Log
+                  </button>
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => onReview(o)}>
+                    Edit &amp; log
+                  </button>
+                  <button type="button" className="btn-ghost btn-sm ml-auto" onClick={() => onSkip(o)}>
+                    Skip
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ManageRepeating({
+  open,
+  onClose,
+  describe,
+}: {
+  open: boolean;
+  onClose: () => void;
+  describe: (r: RecurringRule) => { title: string; subtitle: string };
+}) {
+  const rules = useAppStore((s) => s.wealth.recurring);
+  const setPaused = useAppStore((s) => s.setRecurringPaused);
+  const deleteRecurring = useAppStore((s) => s.deleteRecurring);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  return (
+    <Modal open={open} onClose={onClose} title="Repeating entries">
+      {rules.length === 0 ? (
+        <p className="text-[13px] text-ink-soft leading-snug">
+          None yet. When adding an entry, tick "Repeat every month" to get a reminder each month.
+        </p>
+      ) : (
+        <ul role="list" className="divide-y divide-surface-border/70">
+          {rules.map((r) => {
+            const d = describe(r);
+            const fixed = !(r.template.kind === "transfer" && r.template.payFullBalance);
+            return (
+              <li key={r.id} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`truncate text-[14px] font-semibold ${r.paused ? "text-ink-muted" : "text-ink"}`}>
+                      {d.title}
+                      {r.paused && " · Paused"}
+                    </p>
+                    <p className="text-[11px] text-ink-muted mt-0.5 leading-snug">{d.subtitle}</p>
+                  </div>
+                  <p className="text-[14px] font-semibold text-ink stat-num whitespace-nowrap">
+                    {fixed ? formatGBP(r.template.amount) : "Full balance"}
+                  </p>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button type="button" className="btn-secondary btn-sm" onClick={() => setPaused(r.id, !r.paused)}>
+                    {r.paused ? "Resume" : "Pause"}
+                  </button>
+                  {confirmId === r.id ? (
+                    <button
+                      type="button"
+                      className="btn-danger btn-sm ml-auto"
+                      onClick={() => {
+                        deleteRecurring(r.id);
+                        setConfirmId(null);
+                        showToast("Repeating entry removed — past entries are kept");
+                      }}
+                    >
+                      Remove?
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-ghost btn-sm ml-auto text-status-over" onClick={() => setConfirmId(r.id)}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <p className="mt-3 text-[11px] text-ink-muted leading-snug">
+        To change an amount or account, remove the rule and add a new entry with "Repeat every month" ticked.
+      </p>
+    </Modal>
   );
 }
